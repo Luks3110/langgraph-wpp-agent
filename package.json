@@ -1,0 +1,39 @@
+{
+    "name": "products-monorepo",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "turbo run build",
+        "build-ts": "tsc --build",
+        "dev": "turbo run dev",
+        "lint": "turbo run lint",
+        "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+        "clean": "turbo run clean && rimraf node_modules",
+        "test-queue": "ts-node scripts/test-queue.ts",
+        "import-products-cluster": "node scripts/importFlipkartProductsToQdrantCluster.js",
+        "import-products-debug": "node scripts/debugImportProducts.js",
+        "import-products-sample": "node scripts/debugImportProducts.js 10",
+        "import-products-improved": "node scripts/improvedClusterImport.js"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.5",
+        "prettier": "latest",
+        "rimraf": "latest",
+        "ts-node": "^10.9.2",
+        "turbo": "latest",
+        "typescript": "^5.3.3"
+    },
+    "dependencies": {
+        "@google/generative-ai": "^0.23.0",
+        "@qdrant/js-client-rest": "^1.13.0",
+        "bullmq": "^4.16.0",
+        "dotenv": "^16.3.1",
+        "ioredis": "^5.3.2",
+        "jsonstream2": "^3.0.0"
+    },
+    "packageManager": "pnpm@8.6.10",
+    "engines": {
+        "node": ">=18"
+    }
+}

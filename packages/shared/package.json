@@ -1,0 +1,21 @@
+{
+    "name": "@products-monorepo/shared",
+    "version": "1.0.0",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "type": "module",
+    "scripts": {
+        "build": "tsc",
+        "clean": "rimraf dist",
+        "lint": "eslint \"src/**/*.ts\""
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.19",
+        "eslint": "^8.56.0",
+        "rimraf": "^5.0.5",
+        "typescript": "^5.3.3"
+    },
+    "dependencies": {
+        "zod": "^3.22.4"
+    }
+}

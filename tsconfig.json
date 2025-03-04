@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@products-monorepo/shared": ["packages/shared/src"]
+    }
+  },
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./apps/whatsapp-service" },
+    { "path": "./apps/products-agent" }
+  ]
+}
