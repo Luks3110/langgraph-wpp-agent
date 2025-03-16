@@ -1,0 +1,25 @@
+{
+    "name": "scraper-service",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "scrape:essencia-faq": "tsx src/scripts/scrape-essencia-faq.ts"
+    },
+    "dependencies": {
+        "@google/generative-ai": "latest",
+        "@qdrant/js-client-rest": "latest",
+        "puppeteer": "latest",
+        "dotenv": "latest",
+        "@products-monorepo/shared": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/node": "latest",
+        "@types/puppeteer": "latest",
+        "tsx": "latest",
+        "typescript": "latest"
+    }
+}

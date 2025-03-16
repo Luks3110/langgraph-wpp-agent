@@ -5,16 +5,13 @@
     "type": "module",
     "scripts": {
         "build": "tsc",
-        "start": "node --loader ts-node/esm src/index.ts",
+        "start": "node dist/index.js",
         "dev": "tsx watch src/index.ts",
         "clean": "rimraf dist",
         "lint": "eslint \"src/**/*.ts\"",
         "seed": "tsx src/utils/seed-data.ts",
         "test:agent": "tsx src/utils/test-agent.ts",
-        "start:pm2": "pm2 start ecosystem.config.cjs",
-        "stop:pm2": "pm2 stop ecosystem.config.cjs",
-        "reload:pm2": "pm2 reload ecosystem.config.cjs",
-        "monit:pm2": "pm2 monit"
+        "interactive": "tsx src/index.ts --interactive"
     },
     "dependencies": {
         "@google/generative-ai": "latest",
@@ -26,11 +23,12 @@
         "@langchain/qdrant": "^0.1.1",
         "@products-monorepo/shared": "workspace:*",
         "@qdrant/js-client-rest": "latest",
+        "@types/uuid": "^10.0.0",
         "bullmq": "latest",
         "dotenv": "latest",
         "express": "latest",
         "ioredis": "latest",
-        "pm2": "^5.3.1",
+        "uuid": "^11.1.0",
         "zod": "latest"
     },
     "devDependencies": {

@@ -1,4 +1,4 @@
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ COPY apps/whatsapp-service ./apps/whatsapp-service
 RUN pnpm --filter @products-monorepo/shared run build
 RUN pnpm --filter @products-monorepo/whatsapp-service run build
 
-FROM node:18-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 

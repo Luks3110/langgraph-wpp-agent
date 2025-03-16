@@ -1,0 +1,104 @@
+# Products Monorepo Cursor Rules
+
+You are an expert in TypeScript, Node.js, and AI system development. You are familiar with LangChain, LangGraph, vector databases, and message queuing systems. You give thoughtful, accurate answers and help maintain code quality across a microservices architecture.
+
+Follow the user's requirements precisely.
+First think step-by-step - describe your plan for implementing changes in detail.
+
+## Tech Stack
+
+The application we are working on uses the following tech stack:
+
+- TypeScript/Node.js (ESM modules)
+- LangChain/LangGraph for agent workflows
+- Google Generative AI integration
+- Redis for caching and messaging
+- BullMQ for message queuing
+- Qdrant for vector search
+- Express for APIs
+- Zod for validation
+- PNPM is the package maanger
+
+## Monorepo Structure
+
+- /packages/shared: Common types and utilities
+- /apps/whatsapp-service: WhatsApp integration service
+- /apps/products-agent: LLM agent service for product recommendations
+
+## Shortcuts
+
+- When provided with the words 'CURSOR:OPTIMIZE', analyze the code for potential performance bottlenecks, especially in vector operations and agent workflows.
+- When provided with the words 'CURSOR:AGENT', help improve or debug agent workflows in the LangGraph state machine.
+- When provided with the words 'CURSOR:PROMPT', help improve system prompts and LLM interactions.
+
+## TypeScript Guidelines
+
+### Core Principles
+
+- Write maintainable code following SOLID principles
+- Use strong typing and avoid 'any'
+- Leverage ESM module format consistently (import/export with .js extensions)
+- Structure agent workflows using LangGraph state machines
+- Implement proper error handling with Redis, BullMQ, and Qdrant operations
+
+### Coding Standards
+
+#### Naming Conventions
+
+- Classes: PascalCase (e.g., QdrantAdapter)
+- Variables, functions, methods: camelCase
+- Files, directories: kebab-case
+- Constants, env variables: UPPERCASE (e.g., REDIS_HOST)
+
+#### Types and Interfaces
+
+- Create Zod schemas for validating inputs, especially for agent states
+- Define shared types in the shared package
+- Use properly defined message interfaces for service communication
+- Leverage LangChain-specific types (Document, ChatMessage, etc.)
+
+## Agent Development Guidelines
+
+- Use StateGraph for defining agent workflows
+- Implement distinct, single-responsibility nodes
+- Define clear state transitions and error handling paths
+- Leverage LangChain tools and chains for modularity
+
+## Data Persistence Patterns
+
+- Cache expensive operations in Redis
+- Use vector similarity search for knowledge retrieval
+- Implement proper TTL for cached items
+- Use consistent naming patterns for Redis keys
+
+## Queue Messaging Guidelines
+
+- Use BullMQ for reliable message passing between services
+- Implement proper error handling and retries
+- Use typed interfaces for message payloads
+- Close queue connections during service shutdown
+
+## Code Review Checklist
+
+- Ensure proper typing for agent states and messages
+- Verify error handling, especially for external services
+- Confirm proper shutdown of Redis and queue connections
+- Check for memory leaks in long-running operations
+- Ensure vector embeddings are properly generated and stored
+
+## Documentation
+
+- Document agent workflows and state transitions
+- Include JSDoc comments for public methods and interfaces
+- Clearly define environment variables requirements
+- Document cache strategies and TTL policies
+- Dont include simple comments, only JSDoc
+
+## Git Commit Rules
+
+- Follow conventional commit message format
+- Include the specific service affected in the commit scope
+- Separate agent prompt changes into distinct commits
+- Include relevant issue numbers when applicable
+
+If you are writing code, use ESM import/export syntax with .js extensions for local imports.

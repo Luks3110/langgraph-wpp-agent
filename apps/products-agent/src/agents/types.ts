@@ -1,44 +1,56 @@
-import { Document } from '@langchain/core/documents';
+import { Document } from "@langchain/core/documents";
 
-// State interface for the agent
-export interface AgentState {
-    // Input from the user
-    input: string;
-
-    // User information
-    userId: string;
-
-    // Chat history
-    chatHistory: ChatMessage[];
-
-    // Retrieved documents from vector store
-    documents?: Document[];
-
-    // Agent's response
-    response?: string;
-
-    // Error information
-    error?: Error;
+/**
+ * Enumeration of agent nodes
+ */
+export enum AgentNode {
+  IMPROVE_QUERY = "improve_query",
+  CLASSIFY_FAQ = "classify_faq",
+  RETRIEVE_FAQ = "retrieve_faq",
+  GENERATE_FAQ = "generate_faq",
+  RETRIEVE = "retrieve",
+  GENERATE = "generate",
+  ERROR_HANDLER = "error_handler"
 }
 
-// Chat message interface
-export interface ChatMessage {
-    role: 'user' | 'assistant' | 'system';
-    content: string;
-}
+/**
+ * Type definition for chat messages
+ */
+export type ChatMessage = {
+  role: "human" | "ai";
+  content: string;
+};
+
+/**
+ * Type definition for FAQ result
+ */
+export type FAQResult = {
+  id: string | number;
+  question: string;
+  answer: string;
+  similarity: number;
+};
+
+/**
+ * Type definition for agent state
+ */
+export type AgentState = {
+  userId: string;
+  input: string;
+  originalInput?: string;
+  chatHistory?: ChatMessage[];
+  documents?: Document<Record<string, any>>[];
+  response?: string;
+  cachedResponse?: string;
+  error?: Error;
+  isFAQQuery?: boolean;
+  faqResults?: FAQResult[];
+};
 
 // Agent action types
 export enum AgentAction {
-    RETRIEVE_INFORMATION = 'retrieve_information',
-    GENERATE_RESPONSE = 'generate_response',
-    HANDLE_ERROR = 'handle_error',
+  RETRIEVE_INFORMATION = "retrieve_information",
+  GENERATE_RESPONSE = "generate_response",
+  HANDLE_ERROR = "handle_error",
+  IMPROVE_QUERY = "improve_query"
 }
-
-// Node names for the agent graph
-export enum AgentNode {
-    START = 'start',
-    RETRIEVE = 'retrieve',
-    GENERATE = 'generate',
-    ERROR = 'error',
-    END = 'end',
-} 

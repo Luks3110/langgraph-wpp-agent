@@ -1,2 +1,2 @@
-// Re-export all types
-export * from './types/index.js';
+// Re-export all types with explicit .js extension for ESM compatibility
+export * from "./types/index.js";
