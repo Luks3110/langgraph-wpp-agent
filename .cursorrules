@@ -18,12 +18,14 @@ The application we are working on uses the following tech stack:
 - Express for APIs
 - Zod for validation
 - PNPM is the package maanger
+- Gemini 2.0 as the LLM
 
 ## Monorepo Structure
 
 - /packages/shared: Common types and utilities
 - /apps/whatsapp-service: WhatsApp integration service
 - /apps/products-agent: LLM agent service for product recommendations
+- /apps/supa-agent-frontend: Frontend for the agent
 
 ## Shortcuts
 

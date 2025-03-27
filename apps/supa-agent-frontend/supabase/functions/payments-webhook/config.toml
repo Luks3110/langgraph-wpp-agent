@@ -1,0 +1,4 @@
+# Allow unauthenticated access to the webhook endpoint
+# This is necessary for Stripe webhooks to work
+[functions.payments-webhook]
+verify_jwt = false 
