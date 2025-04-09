@@ -1,4 +1,4 @@
-import { FlowNode } from '@/app/dashboard/agents/create-flow/page';
+import { FlowNode } from '@/utils/flow-types';
 import { Edge } from '@xyflow/react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
  * @param initialEdges - Initial array of edges
  * @returns Object containing nodes, edges, setNodes, setEdges, and undo function
  */
-export function useFlowHistory<NodeType, EdgeType>(
+export function useFlowHistory(
     initialNodes: FlowNode[] = [],
     initialEdges: Edge[] = [],
 ) {
@@ -68,7 +68,7 @@ export function useFlowHistory<NodeType, EdgeType>(
                 return previousState.nodes.map(historyNode => {
                     // Find matching React component for the node if it exists
                     const existingNode = prevNodes.find(n => n.id === historyNode.id);
-                    const configComponent = existingNode ? existingNode.configComponent : undefined;
+                    const configComponent = existingNode ? (existingNode as any).configComponent : undefined;
 
                     // Return the restored node with its config component
                     return {

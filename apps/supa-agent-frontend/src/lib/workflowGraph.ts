@@ -1,7 +1,21 @@
 /**
  * Types for workflow nodes and edges
  */
-export type NodeType = 'character' | 'knowledge' | 'testing' | 'deployment' | 'mercadolivreQa' | 'function' | 'http' | 'decision' | 'webhook' | 'trigger' | 'delay' | 'transformation' | 'custom';
+export type NodeType =
+    'character'
+    | 'knowledge'
+    | 'testing'
+    | 'deployment'
+    | 'mercadolivreQa'
+    | 'whatsapp'
+    | 'function'
+    | 'http'
+    | 'decision'
+    | 'webhook'
+    | 'trigger'
+    | 'delay'
+    | 'transformation'
+    | 'custom';
 
 export interface NodePosition {
     x: number;
@@ -73,6 +87,118 @@ export interface MercadoLivreQANodeData extends WebhookNodeData {
         response: string;
         priority: number;
     }>;
+}
+
+/**
+ * WhatsApp specific node data
+ */
+export interface WhatsAppNodeData extends WebhookNodeData {
+    apiConfigured: boolean;
+    phoneNumberConfigured: boolean;
+    messageTemplatesCount: number;
+    autoReplyEnabled: boolean;
+    responseDelay?: string;
+    accessToken?: string;
+    phoneNumberId?: string;
+    appSecret?: string;
+    webhookVerifyToken?: string;
+    autoReplyMessage?: string;
+    autoReplyKeywords?: string;
+    agentEnabled?: boolean;
+}
+
+/**
+ * Instagram specific node data
+ */
+export interface InstagramNodeData extends WebhookNodeData {
+    name: string;
+    apiConfigured: boolean;
+    accessToken: string;
+    igBusinessId: string;
+    webhookVerifyToken: string;
+    webhookSecret: string;
+    messageEvents: string[];
+    reactionEvents: boolean;
+    postbackEvents: boolean;
+    seenEvents: boolean;
+    referralEvents: boolean;
+}
+
+export interface AgentWorkflow {
+    id: string;
+    name: string;
+    description: string;
+    createdAt: string;
+    updatedAt: string;
+    status: "draft" | "active" | "archived";
+    version: string;
+    workflow: {
+        forest: {
+            roots: string[];
+            adjacencyList: Record<
+                string,
+                {
+                    children: string[];
+                    parents: string[];
+                    depth: number; // Depth in the tree for efficient sorting
+                    pathIndices: number[]; // Which paths this node belongs to
+                }
+            >;
+        };
+        nodes: Record<
+            string,
+            {
+                id: string;
+                type: NodeType;
+                name: string;
+                position: { x: number; y: number };
+                data: Record<string, any>;
+                metadata?: {
+                    createdAt?: Date;
+                    updatedAt?: Date;
+                    createdBy?: string;
+                    tags?: string[];
+                    status?: "draft" | "published" | "deprecated";
+                };
+                version?: number;
+                workflowId?: string;
+            }
+        >;
+        // Execution paths through the workflow
+        paths: Array<{
+            id: string;
+            name: string;
+            rootId: string; // The entry point for this path
+            nodeSequence: string[]; // Pre-computed optimal traversal
+        }>;
+        // Visual representation for the UI
+        edges: Record<
+            string,
+            {
+                id: string;
+                source: string;
+                target: string;
+                label?: string;
+                type?: "success" | "failure" | "default";
+                condition?: string;
+            }
+        >;
+        execution: {
+            branchPoints: string[];
+            leafNodes: string[];
+            convergencePoints: string[];
+            parallelExecutionGroups: string[][];
+            metadata?: any;
+        };
+    };
+    metadata: {
+        tags: string[];
+        author: string;
+        lastRun?: string;
+        runCount: number;
+        avgExecutionTime?: number;
+        environment: "development" | "staging" | "production";
+    };
 }
 
 export interface WorkflowNode {

@@ -1,31 +1,36 @@
 import { generateWebhookUrl } from "@/lib/utils";
-import { MercadoLivreQANodeData } from "@/lib/workflowGraph";
+import { WhatsAppNodeData } from "@/lib/workflowGraph";
 import { Handle, Node, NodeProps, Position } from "@xyflow/react";
-import { Bot } from "lucide-react";
+import { MessageSquareMore } from "lucide-react";
 import { useMemo } from "react";
 
-export interface IMercadoLivreQANode {
-  type: "mercadolivreQa";
-  data: MercadoLivreQANodeData;
+export interface IWhatsAppNode {
+  type: "whatsapp";
+  data: WhatsAppNodeData;
   id: string;
   position: { x: number; y: number };
   workflowId?: string;
   userId?: string;
-  responseDelay?: string;
-  rulesCount?: number;
-  defaultResponseSet?: boolean;
-  apiConfigured?: boolean;
+  messageTemplatesCount?: number;
   webhookId?: string;
   webhookUrl?: string;
+  apiConfigured?: boolean;
+  phoneNumberConfigured?: boolean;
+  autoReplyEnabled?: boolean;
+  responseDelay?: string;
+  accessToken?: string;
+  phoneNumberId?: string;
+  appSecret?: string;
   [key: string]: unknown;
 }
 
-type MercadoLivreQANodeProps = NodeProps<Node<IMercadoLivreQANode>>;
-const MercadoLivreQANode = ({ id, data }: MercadoLivreQANodeProps) => {
-  const node = data as IMercadoLivreQANode;
+type WhatsAppNodeProps = NodeProps<Node<IWhatsAppNode>>;
+
+const WhatsAppNode = ({ id, data }: WhatsAppNodeProps) => {
+  const node = data as IWhatsAppNode;
 
   // Get the userId and workflowId from the node
-  const nodeType = node.type || "mercadolivreQa"; // Use actual node type instead of hardcoding
+  const nodeType = node.type || "whatsapp";
   const userId = node.userId || "default-user";
   const workflowId = node.workflowId || "default-workflow";
 
@@ -88,45 +93,57 @@ const MercadoLivreQANode = ({ id, data }: MercadoLivreQANodeProps) => {
         className="opacity-0 group-hover:opacity-100 transition-opacity"
       />
       <div className="flex items-center gap-2 mb-2">
-        <div className="bg-orange-100 p-1 rounded-full">
-          <Bot className="h-4 w-4 text-orange-600" />
+        <div className="bg-green-100 p-1 rounded-full">
+          <MessageSquareMore className="h-4 w-4 text-green-600" />
         </div>
-        <h3 className="text-sm font-medium">MercadoLivre Q&A</h3>
+        <h3 className="text-sm font-medium">WhatsApp Integration</h3>
       </div>
       <div className="text-xs text-gray-500 mb-2">
-        Automate responses to Mercado Livre customer questions
+        Automate conversations via WhatsApp Business API
       </div>
       <div className="flex flex-col gap-1 text-xs">
         <div className="flex justify-between">
           <span>API Status:</span>
           <span
-            className={`font-medium ${data.apiConfigured ? "text-green-600" : "text-red-600"}`}
+            className={`font-medium ${
+              data.apiConfigured ? "text-green-600" : "text-red-600"
+            }`}
           >
             {data.apiConfigured ? "Configured" : "Not Configured"}
           </span>
         </div>
         <div className="flex justify-between">
-          <span>Response Rules:</span>
-          <span className="font-medium">{data.rulesCount || 0} rules</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Default Response:</span>
+          <span>Phone Number:</span>
           <span
-            className={`font-medium ${data.defaultResponseSet ? "text-green-600" : "text-yellow-600"}`}
+            className={`font-medium ${
+              data.phoneNumberConfigured ? "text-green-600" : "text-red-600"
+            }`}
           >
-            {data.defaultResponseSet ? "Set" : "Not Set"}
+            {data.phoneNumberConfigured ? "Configured" : "Not Configured"}
           </span>
         </div>
         <div className="flex justify-between">
-          <span>Response Delay:</span>
+          <span>Templates:</span>
           <span className="font-medium">
-            {data.responseDelay || "Immediate"}
+            {data.messageTemplatesCount || 0} templates
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span>Auto-Reply:</span>
+          <span
+            className={`font-medium ${
+              data.autoReplyEnabled ? "text-green-600" : "text-gray-600"
+            }`}
+          >
+            {data.autoReplyEnabled ? "Enabled" : "Disabled"}
           </span>
         </div>
         <div className="flex justify-between">
           <span>Webhook Status:</span>
           <span
-            className={`font-medium ${webhookActive ? "text-green-600" : "text-yellow-600"}`}
+            className={`font-medium ${
+              webhookActive ? "text-green-600" : "text-yellow-600"
+            }`}
           >
             {webhookActive ? "Active" : "Not Configured"}
           </span>
@@ -136,4 +153,4 @@ const MercadoLivreQANode = ({ id, data }: MercadoLivreQANodeProps) => {
   );
 };
 
-export default MercadoLivreQANode;
+export default WhatsAppNode;
