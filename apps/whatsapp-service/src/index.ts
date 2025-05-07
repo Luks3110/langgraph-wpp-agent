@@ -2,8 +2,8 @@ import express, { Request, Response } from 'express';
 import { queueClient } from './clients/queue.js';
 import { redisClient } from './clients/redis.js';
 import { whatsappClient } from './clients/whatsapp.js';
-import { AGENT_RESPONSE_WEBHOOK_PATH, PORT } from './config/env.js';
-import { webhookController } from './controllers/webhook-controller.js';
+import { AGENT_RESPONSE_WEBHOOK_PATH, PORT, validateEnvVariables } from './config/env.js';
+import { agentWebhookController } from './controllers/agent-webhook-controller.js';
 
 // Initialize Express app
 const app = express();
@@ -16,6 +16,12 @@ app.use(express.json({
 
 async function initializeApp() {
     try {
+        // Validate environment variables
+        if (!validateEnvVariables()) {
+            console.error("Missing required environment variables. Exiting...");
+            process.exit(1);
+        }
+
         // Test Redis connection
         await redisClient.ping();
         console.log('Redis connection successful');
@@ -23,11 +29,10 @@ async function initializeApp() {
         // Set up WhatsApp webhook routes
         setupRoutes();
 
-
-        // Register message handler
+        // Register message handler using the LangGraph agent controller
         whatsappClient.on('message', (message) => {
             console.log('Received message:', message);
-            webhookController.handleWhatsAppMessage(message);
+            agentWebhookController.handleWhatsAppMessage(message);
         });
 
         // Start the server
@@ -50,13 +55,17 @@ function setupRoutes() {
     });
 
     // Verify webhook (GET request handler)
-    app.get('/webhook', webhookController.handleVerification.bind(webhookController));
+    app.get('/webhook', agentWebhookController.handleVerification.bind(agentWebhookController));
 
     // Handle incoming messages (POST request handler)
-    app.post('/webhook', webhookController.processWebhook.bind(webhookController));
+    app.post('/webhook', agentWebhookController.processWebhook.bind(agentWebhookController));
 
     // Handle agent responses to be sent back to WhatsApp
-    app.post(AGENT_RESPONSE_WEBHOOK_PATH, webhookController.handleAgentResponse.bind(webhookController));
+    app.post(AGENT_RESPONSE_WEBHOOK_PATH, (req, res) => {
+        // We're using the direct agent response in the LangGraph flow now
+        // But keeping this endpoint for backward compatibility
+        res.status(200).json({ status: "Direct agent response is now used" });
+    });
 }
 
 // Handle graceful shutdown

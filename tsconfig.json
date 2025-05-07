@@ -17,6 +17,7 @@
     { "path": "./packages/shared" },
     { "path": "./apps/whatsapp-service" },
     { "path": "./apps/products-agent" },
-    { "path": "./apps/supa-agent-frontend" }
+    { "path": "./apps/supa-agent-frontend" },
+    { "path": "./apps/workflows" }
   ]
 }

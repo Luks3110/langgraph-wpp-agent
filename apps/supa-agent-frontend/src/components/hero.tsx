@@ -1,5 +1,5 @@
+import { ArrowUpRight, Bot, Check } from "lucide-react";
 import Link from "next/link";
-import { ArrowUpRight, Check, Bot } from "lucide-react";
 
 export default function Hero() {
   return (

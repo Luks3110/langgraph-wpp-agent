@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq';
-import { DomainEvent } from '../domain/events/index.js';
-import { RedisConnection } from './database/redis.js';
+import { DomainEvent } from '../domain/events/index';
+import { RedisConnection } from './database/redis';
 
 export interface EventBus {
     publish(event: DomainEvent): Promise<void>;

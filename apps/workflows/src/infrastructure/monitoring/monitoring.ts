@@ -1,8 +1,8 @@
 import { Job, Queue, QueueEvents, Worker } from 'bullmq';
-import { DomainEvent } from '../../domain/events/index.js';
-import { AlertingService, AlertType } from './alerting.js';
-import { LoggerService } from './logger.js';
-import { MetricsService } from './metrics.js';
+import { DomainEvent } from '../../domain/events/index';
+import { AlertingService, AlertType } from './alerting';
+import { LoggerService } from './logger';
+import { MetricsService } from './metrics';
 
 /**
  * Threshold configurations for alerts
@@ -328,18 +328,19 @@ export class MonitoringService {
     private categorizeError(errorMessage: string): string {
         const lowerMessage = errorMessage.toLowerCase();
 
-        if (lowerMessage.includes('timeout') || lowerMessage.includes('timed out')) {
-            return 'timeout';
-        } else if (lowerMessage.includes('connection') || lowerMessage.includes('connect')) {
-            return 'connection';
-        } else if (lowerMessage.includes('database') || lowerMessage.includes('sql') || lowerMessage.includes('query')) {
-            return 'database';
-        } else if (lowerMessage.includes('validation') || lowerMessage.includes('invalid')) {
-            return 'validation';
-        } else if (lowerMessage.includes('permission') || lowerMessage.includes('access') || lowerMessage.includes('unauthorized')) {
-            return 'authorization';
-        } else {
-            return 'unknown';
+        switch (true) {
+            case lowerMessage.includes('timeout') || lowerMessage.includes('timed out'):
+                return 'timeout';
+            case lowerMessage.includes('connection') || lowerMessage.includes('connect'):
+                return 'connection';
+            case lowerMessage.includes('database') || lowerMessage.includes('sql') || lowerMessage.includes('query'):
+                return 'database';
+            case lowerMessage.includes('validation') || lowerMessage.includes('invalid'):
+                return 'validation';
+            case lowerMessage.includes('permission') || lowerMessage.includes('access') || lowerMessage.includes('unauthorized'):
+                return 'authorization';
+            default:
+                return 'unknown';
         }
     }
 

@@ -1,4 +1,3 @@
-import DashboardNavbar from "@/components/dashboard-navbar";
 import AgentOverviewPanel from "@/components/dashboard/agent-overview-panel";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import PerformanceMetrics from "@/components/dashboard/performance-metrics";
@@ -9,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Bot, Share2 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "../../../supabase/server";
+import { createClient } from "../../../../supabase/server";
 
 export default async function Dashboard() {
   const supabase = await createClient();
@@ -24,7 +23,6 @@ export default async function Dashboard() {
 
   return (
     <SubscriptionCheck>
-      <DashboardNavbar />
       <main className="w-full bg-gray-50 min-h-screen">
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col justify-between gap-3">
@@ -32,12 +30,12 @@ export default async function Dashboard() {
 
             <div className="flex gap-4 justify-end">
               <div className="flex gap-3">
-                <Link href="/dashboard/agents/create">
+                <Link href="/agents/create">
                   <Button variant="outline" className="flex items-center gap-2">
                     <Bot className="h-4 w-4" /> Create Agent
                   </Button>
                 </Link>
-                <Link href="/dashboard/agents/create-flow">
+                <Link href="/agents/create-flow">
                   <Button className="flex items-center gap-2">
                     <Share2 className="h-4 w-4" /> Create with Flowchart
                   </Button>

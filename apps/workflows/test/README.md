@@ -1,6 +1,7 @@
 # Integration Test Suite
 
-This directory contains integration tests for the workflows engine, addressing [TAL-54](https://linear.app/talkio/issue/TAL-54/[testing]-integration-test-suite).
+This directory contains integration tests for the workflows engine, addressing
+[TAL-54](https://linear.app/talkio/issue/TAL-54/[testing]-integration-test-suite).
 
 ## Structure
 
@@ -36,7 +37,9 @@ Or use the convenience script:
 
 ## Coverage Reports
 
-Coverage reports are generated in the `/coverage` directory after running `pnpm test:coverage`. These are automatically uploaded as artifacts by the GitHub Actions workflow.
+Coverage reports are generated in the `/coverage` directory after running
+`pnpm test:coverage`. These are automatically uploaded as artifacts by the
+GitHub Actions workflow.
 
 ## Writing New Tests
 
@@ -50,26 +53,26 @@ When writing new tests:
 Example test structure:
 
 ```typescript
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ComponentToTest } from '../../src/path/to/component';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ComponentToTest } from "../../src/path/to/component";
 
 // Optional: Mock dependencies
-vi.mock('dependency', () => ({
+vi.mock("dependency", () => ({
   // mock implementation
 }));
 
-describe('ComponentName', () => {
+describe("ComponentName", () => {
   let component: ComponentToTest;
-  
+
   beforeEach(() => {
     component = new ComponentToTest();
   });
-  
+
   afterEach(() => {
     vi.clearAllMocks();
   });
-  
-  it('should do something specific', () => {
+
+  it("should do something specific", () => {
     const result = component.method();
     expect(result).toBe(expectedValue);
   });
@@ -79,8 +82,9 @@ describe('ComponentName', () => {
 ## CI Integration
 
 Tests are automatically run on:
+
 - Pull requests to `main`
 - Push to `main`
 - Manual trigger via GitHub Actions
 
-The workflow configuration is in `.github/workflows/integration-tests.yml`. 
+The workflow configuration is in `.github/workflows/integration-tests.yml`.

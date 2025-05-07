@@ -1,29 +1,51 @@
+// @ts-nocheck
 import { faker } from '@faker-js/faker';
 import { SupabaseClient } from '@supabase/supabase-js';
-import Redis from 'ioredis-mock';
+import { vi } from 'vitest';
 import { Database } from '../src/infrastructure/database/supabase.types';
+
+// Import Redis from our setup
+const mockRedis = vi.hoisted(() => {
+    const Redis = function () {
+        return {
+            connect: vi.fn().mockResolvedValue(undefined),
+            disconnect: vi.fn().mockResolvedValue(undefined),
+            set: vi.fn().mockImplementation((key, value) => {
+                Redis.data[key] = value;
+                return Promise.resolve('OK');
+            }),
+            get: vi.fn().mockImplementation((key) => {
+                return Promise.resolve(Redis.data[key] || null);
+            }),
+            options: {}
+        };
+    };
+
+    // Store for Redis mock data
+    Redis.data = {};
+
+    return {
+        Redis,
+        default: Redis
+    };
+});
 
 /**
  * Create a mock Redis connection
  */
 export function createMockRedis() {
-    return new Redis();
+    return new mockRedis.Redis();
 }
 
 /**
  * Create a mock Redis connection adapter
  */
 export function createMockRedisConnection() {
-    const mockRedis = createMockRedis();
+    const redis = createMockRedis();
 
     return {
-        getConnection: jest.fn().mockReturnValue({
-            options: {
-                host: 'localhost',
-                port: 6379
-            }
-        }),
-        close: jest.fn().mockResolvedValue(undefined)
+        getConnection: () => redis,
+        close: vi.fn().mockResolvedValue(undefined)
     };
 }
 
@@ -32,13 +54,13 @@ export function createMockRedisConnection() {
  */
 export function createMockSupabaseClient() {
     const mockClient = {
-        from: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        insert: jest.fn().mockReturnThis(),
-        update: jest.fn().mockReturnThis(),
-        delete: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockReturnValue({
+        from: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        insert: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnThis(),
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockReturnValue({
             data: null,
             error: null
         })
@@ -54,7 +76,7 @@ export function createMockSupabaseConnection() {
     const mockClient = createMockSupabaseClient();
 
     return {
-        getClient: jest.fn().mockReturnValue(mockClient)
+        getClient: vi.fn().mockReturnValue(mockClient)
     };
 }
 
@@ -93,8 +115,8 @@ export function createMockJobOptions() {
  * Mock BullMQ Queue
  */
 export class MockQueue {
-    private jobs = new Map();
-    private addedJobs = [];
+    private jobs = new Map<string, any>();
+    private addedJobs: any[] = [];
 
     constructor(public name: string, public opts = {}) { }
 
@@ -105,9 +127,9 @@ export class MockQueue {
             name,
             data,
             opts,
-            getState: async () => 'waiting',
-            finished: () => Promise.resolve(),
-            remove: () => Promise.resolve()
+            getState: vi.fn().mockResolvedValue('waiting'),
+            finished: vi.fn().mockResolvedValue(undefined),
+            remove: vi.fn().mockResolvedValue(undefined)
         };
 
         this.jobs.set(id, job);
@@ -130,56 +152,8 @@ export class MockQueue {
     setMockJobState(id: string, state: string) {
         if (this.jobs.has(id)) {
             const job = this.jobs.get(id);
-            job.getState = async () => state;
+            job.getState.mockResolvedValue(state);
             this.jobs.set(id, job);
         }
     }
-}
-
-// Vitest expects mock.fn() instead of jest.fn()
-export const vi = {
-    fn: function () {
-        return function (...args: any[]) {
-            const mockFn = function (...innerArgs: any[]) {
-                mockFn.mock.calls.push(innerArgs);
-                return mockFn.mockReturnValue;
-            };
-
-            mockFn.mock = {
-                calls: [],
-                instances: [],
-                invocationCallOrder: [],
-                results: []
-            };
-
-            mockFn.mockReturnValue = undefined;
-            mockFn.mockReturnThis = function () {
-                mockFn.mockReturnValue = this;
-                return mockFn;
-            };
-            mockFn.mockResolvedValue = function (value: any) {
-                mockFn.mockReturnValue = Promise.resolve(value);
-                return mockFn;
-            };
-            mockFn.mockImplementation = function (implementation: Function) {
-                const originalMockFn = mockFn;
-                mockFn = function (...innerArgs: any[]) {
-                    originalMockFn.mock.calls.push(innerArgs);
-                    return implementation(...innerArgs);
-                };
-                mockFn.mock = originalMockFn.mock;
-                mockFn.mockReturnValue = originalMockFn.mockReturnValue;
-                mockFn.mockReturnThis = originalMockFn.mockReturnThis;
-                mockFn.mockResolvedValue = originalMockFn.mockResolvedValue;
-                mockFn.mockImplementation = originalMockFn.mockImplementation;
-                return mockFn;
-            };
-
-            if (args.length > 0) {
-                mockFn.mockReturnValue = args[0];
-            }
-
-            return mockFn;
-        };
-    }
-}; 
+} 

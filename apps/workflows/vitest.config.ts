@@ -11,10 +11,20 @@ export default defineConfig({
             exclude: ['**/node_modules/**', '**/dist/**', '**/test/**']
         },
         include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
+        setupFiles: ['./test/setup.ts']
     },
     resolve: {
         alias: {
-            '@': resolve(__dirname, './src')
+            '@': resolve(__dirname, './src'),
+            'ioredis': 'ioredis-mock'
         }
+    },
+    esbuild: {
+        // Suppress target warning
+        logOverride: {
+            'this-is-undefined-in-esm': 'silent',
+            'unsupported-target': 'silent',
+        },
+        target: 'es2022'
     }
 }); 

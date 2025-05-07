@@ -14,6 +14,9 @@
     },
     "dependencies": {
         "@hono/zod-validator": "^0.1.11",
+        "@langchain/core": "^0.3.42",
+        "@langchain/google-genai": "^0.2.3",
+        "@langchain/langgraph": "^0.2.51",
         "@products-monorepo/shared": "workspace:*",
         "@supabase/supabase-js": "^2.49.4",
         "bullmq": "^4.16.0",
@@ -28,6 +31,7 @@
     "devDependencies": {
         "@faker-js/faker": "^9.7.0",
         "@supabase/supabase-js": "^2.49.4",
+        "@types/ioredis-mock": "^8.2.5",
         "@types/pg": "^8.10.9",
         "@types/uuid": "^9.0.7",
         "@vitest/coverage-v8": "^3.1.1",
@@ -36,6 +40,6 @@
         "rimraf": "latest",
         "ts-node": "^10.9.2",
         "typescript": "^5.3.3",
-        "vitest": "^3.0.9"
+        "vitest": "3.1.1"
     }
 }

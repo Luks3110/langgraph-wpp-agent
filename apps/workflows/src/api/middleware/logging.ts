@@ -1,5 +1,5 @@
 import { Context, Next } from 'hono';
-import { LoggerService } from '../../infrastructure/monitoring/logger.js';
+import { LoggerService } from '../../infrastructure/monitoring/logger';
 
 /**
  * Middleware to log API requests
@@ -30,27 +30,30 @@ export function loggingMiddleware() {
         const status = c.res.status;
         const responseTime = c.res.headers.get('X-Response-Time') || '0ms';
 
-        if (status >= 500) {
-            logger.error(`${method} ${url} ${status}`, {
-                method,
-                url,
-                status,
-                responseTime
-            });
-        } else if (status >= 400) {
-            logger.warn(`${method} ${url} ${status}`, {
-                method,
-                url,
-                status,
-                responseTime
-            });
-        } else {
-            logger.http(`${method} ${url} ${status}`, {
-                method,
-                url,
-                status,
-                responseTime
-            });
+        switch (true) {
+            case status >= 500:
+                logger.error(`${method} ${url} ${status}`, {
+                    method,
+                    url,
+                    status,
+                    responseTime
+                });
+                break;
+            case status >= 400:
+                logger.warn(`${method} ${url} ${status}`, {
+                    method,
+                    url,
+                    status,
+                    responseTime
+                });
+                break;
+            default:
+                logger.http(`${method} ${url} ${status}`, {
+                    method,
+                    url,
+                    status,
+                });
+                break;
         }
 
         return c.res;

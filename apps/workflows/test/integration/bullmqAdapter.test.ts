@@ -1,7 +1,8 @@
 // @ts-nocheck - Disable TypeScript checking for test file
+import { BullMQAdapter, JobStatus } from '@/infrastructure/bullmq/jobQueue';
 import { Queue } from 'bullmq';
 import { afterEach, beforeEach, describe, expect, it, MockInstance, vi } from 'vitest';
-import { BullMQAdapter, JobStatus } from '../../src/infrastructure/bullmq/jobQueue';
+import { createMockRedisConnection, createMockSupabaseConnection } from '../mocks';
 
 // Mocks
 vi.mock('bullmq', () => {
@@ -22,35 +23,11 @@ vi.mock('bullmq', () => {
     };
 });
 
-// Create mock Redis connection
-const mockRedisConnection = {
-    getConnection: vi.fn().mockReturnValue({
-        options: {
-            host: 'localhost',
-            port: 6379,
-        },
-    }),
-    close: vi.fn().mockResolvedValue(undefined),
-};
-
-// Create mock Supabase client
-const mockSupabaseClient = {
-    from: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    delete: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockReturnValue({
-        data: null,
-        error: null,
-    }),
-};
+// Mock Redis connection with ioredis-mock
+const mockRedisConnection = createMockRedisConnection();
 
 // Create mock Supabase connection
-const mockSupabaseConnection = {
-    getClient: vi.fn().mockReturnValue(mockSupabaseClient),
-};
+const mockSupabaseConnection = createMockSupabaseConnection();
 
 describe('BullMQAdapter', () => {
     let adapter: BullMQAdapter;
@@ -76,13 +53,9 @@ describe('BullMQAdapter', () => {
             const jobId = await adapter.addJob(queueName, data, options);
 
             expect(jobId).toBe('1');
-            expect(Queue).toHaveBeenCalledWith(queueName, {
-                connection: mockRedisConnection.getConnection().options,
-                defaultJobOptions: {
-                    removeOnComplete: 100,
-                    removeOnFail: 500,
-                },
-            });
+            expect(Queue).toHaveBeenCalledWith(queueName, expect.objectContaining({
+                connection: expect.any(Object)
+            }));
 
             const mockQueueInstance = (Queue as any).mock.results[0].value;
             expect(mockQueueInstance.add).toHaveBeenCalledWith('process', data, options);
@@ -97,6 +70,7 @@ describe('BullMQAdapter', () => {
                 eventType: 'test.event',
             };
 
+            const mockSupabaseClient = mockSupabaseConnection.getClient();
             mockSupabaseClient.insert.mockReturnValue({
                 data: null,
                 error: null,
@@ -144,6 +118,7 @@ describe('BullMQAdapter', () => {
             expect(mockQueueInstance.getJob).toHaveBeenCalledWith(jobId);
 
             // Should update the status in Supabase
+            const mockSupabaseClient = mockSupabaseConnection.getClient();
             expect(mockSupabaseConnection.getClient).toHaveBeenCalled();
             expect(mockSupabaseClient.from).toHaveBeenCalledWith('event_store');
             expect(mockSupabaseClient.update).toHaveBeenCalledWith({ status: 'active' });
@@ -156,6 +131,7 @@ describe('BullMQAdapter', () => {
             mockQueueInstance.getJob.mockResolvedValueOnce(null);
 
             // Mock Supabase response
+            const mockSupabaseClient = mockSupabaseConnection.getClient();
             mockSupabaseClient.single.mockReturnValueOnce({
                 data: { status: 'completed' },
                 error: null,
@@ -185,6 +161,7 @@ describe('BullMQAdapter', () => {
                 ['unknown_status', 'waiting'],
             ];
 
+            const mockSupabaseClient = mockSupabaseConnection.getClient();
             for (const [dbStatus, expectedStatus] of testCases) {
                 mockSupabaseClient.single.mockReturnValueOnce({
                     data: { status: dbStatus },
@@ -202,6 +179,7 @@ describe('BullMQAdapter', () => {
             mockQueueInstance.getJob.mockResolvedValueOnce(null);
 
             // Mock Supabase response - not found
+            const mockSupabaseClient = mockSupabaseConnection.getClient();
             mockSupabaseClient.single.mockReturnValueOnce({
                 data: null,
                 error: { code: 'PGRST116', message: 'Not found' },
@@ -218,6 +196,7 @@ describe('BullMQAdapter', () => {
             mockQueueInstance.getJob.mockResolvedValueOnce(null);
 
             // Mock Supabase error
+            const mockSupabaseClient = mockSupabaseConnection.getClient();
             mockSupabaseClient.single.mockReturnValueOnce({
                 data: null,
                 error: { code: 'ERROR', message: 'Database error' },

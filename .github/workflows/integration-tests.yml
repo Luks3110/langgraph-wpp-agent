@@ -2,15 +2,15 @@ name: Integration Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       redis:
         image: redis
@@ -21,26 +21,26 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
-          
+
       - name: Setup PNPM
         uses: pnpm/action-setup@v2
         with:
           version: 8
           run_install: false
-          
+
       - name: Get pnpm store directory
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-          
+
       - uses: actions/cache@v3
         name: Setup pnpm cache
         with:
@@ -48,17 +48,17 @@ jobs:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
-          
+
       - name: Install dependencies
         run: pnpm install
-          
+
       - name: Run integration tests
         run: |
           cd apps/workflows
           pnpm test:coverage
-          
+
       - name: Upload coverage reports
         uses: actions/upload-artifact@v3
         with:
           name: coverage-report
-          path: apps/workflows/coverage/ 
+          path: apps/workflows/coverage/

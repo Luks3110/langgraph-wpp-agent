@@ -1,10 +1,10 @@
 import { Queue, Worker } from 'bullmq';
 import { randomUUID } from 'crypto';
-import { RedisConnection } from '../infrastructure/database/redis.js';
-import { AlertingService, EmailAlertChannel, WebhookAlertChannel } from '../infrastructure/monitoring/alerting.js';
-import { LoggerService, LogLevel } from '../infrastructure/monitoring/logger.js';
-import { MetricsService } from '../infrastructure/monitoring/metrics.js';
-import { MonitoringService } from '../infrastructure/monitoring/monitoring.js';
+import { RedisConnection } from '../infrastructure/database/redis';
+import { AlertingService, EmailAlertChannel, WebhookAlertChannel } from '../infrastructure/monitoring/alerting';
+import { LoggerService, LogLevel } from '../infrastructure/monitoring/logger';
+import { MetricsService } from '../infrastructure/monitoring/metrics';
+import { MonitoringService } from '../infrastructure/monitoring/monitoring';
 
 /**
  * Example demonstrating the monitoring system
