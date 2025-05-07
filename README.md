@@ -1,26 +1,33 @@
 # Products Monorepo
 
-A monorepo containing a WhatsApp integration service and a product recommendation agent using LangChain, LangGraph, and Qdrant for vector search.
+A monorepo containing a WhatsApp integration service, a product recommendation agent, a frontend for agent interaction, a data scraper, and workflow orchestrations using LangChain, BullMQ, and Qdrant for vector search.
 
 ## Architecture
 
 This project uses a microservices architecture with the following components:
 
-1. **WhatsApp Service**: Handles WhatsApp webhook events, receives messages, and forwards them to the agent service using BullMQ queues.
+1. **WhatsApp Service (`whatsapp-service`)**: Handles WhatsApp webhook events, receives messages, and forwards them to the agent service using BullMQ queues.
 
-2. **Products Agent Service**: Processes messages using a LangChain agent and Qdrant vector search, then sends responses back to the WhatsApp service through BullMQ. Runs in cluster mode with PM2 to utilize multiple CPU cores.
+2. **Products Agent Service (`products-agent`)**: Processes messages using a LangChain agent and Qdrant vector search, then sends responses back to the WhatsApp service through BullMQ. Runs in cluster mode with PM2 to utilize multiple CPU cores.
 
-3. **Redis**: Manages message queues between services using BullMQ.
+3. **Supa Agent Frontend (`supa-agent-frontend`)**: Next.js/Tailwind web frontend for interacting with the agent, visualizing recommendations, and managing user sessions. Supports local development and Vercel deployment.
 
-4. **Shared Package**: Contains common types and utilities used by both services.
+4. **Scraper Service (`scraper-service`)**: Scrapes product or external data sources to populate the vector database or enrich product information. Can be run on demand or scheduled.
+
+5. **Workflows (`workflows`)**: Orchestrates workflows using BullMQ for distributed job management and persists workflow state in Supabase for durability and observability. This service enables reliable, stateful, and recoverable workflow execution across the system.
+
+6. **Redis**: Manages message queues between services using BullMQ.
+
+7. **Shared Package**: Contains common types and utilities used by all services.
 
 ## Prerequisites
 
 - Node.js 18+
 - pnpm
 - Docker and Docker Compose (for local development with Redis and Qdrant)
-- WhatsApp Business API credentials
-- Google Generative AI API key
+- WhatsApp Business API credentials (for whatsapp-service)
+- Google Generative AI API key (for products-agent)
+- Vercel account (for frontend deployment, optional)
 
 ## Setup
 
@@ -42,9 +49,11 @@ pnpm install
 ```bash
 cp apps/whatsapp-service/.env.example apps/whatsapp-service/.env
 cp apps/products-agent/.env.example apps/products-agent/.env
+cp apps/supa-agent-frontend/.env.example apps/supa-agent-frontend/.env
+cp apps/scraper-service/.env.example apps/scraper-service/.env
 ```
 
-4. Edit both `.env` files with your API keys and service configurations.
+4. Edit each `.env` file with your API keys and service configurations as needed.
 
 ## Development
 
@@ -58,10 +67,19 @@ To run services in development mode:
 
 ```bash
 # Run WhatsApp service
-pnpm --filter @products-monorepo/whatsapp-service dev
+dpnm --filter @products-monorepo/whatsapp-service dev
 
 # Run Products Agent service
 pnpm --filter @products-monorepo/products-agent dev
+
+# Run Supa Agent Frontend (Next.js dev server)
+pnpm --filter @products-monorepo/supa-agent-frontend dev
+
+# Run Scraper Service (if needed)
+pnpm --filter @products-monorepo/scraper-service dev
+
+# Run Workflows (if needed)
+pnpm --filter @products-monorepo/workflows dev
 ```
 
 ### Running Products Agent with PM2
@@ -84,6 +102,25 @@ pnpm --filter @products-monorepo/products-agent reload:pm2
 # Stop the cluster
 pnpm --filter @products-monorepo/products-agent stop:pm2
 ```
+
+### Running the Frontend (`supa-agent-frontend`)
+
+1. Ensure you have a valid `.env` file in `apps/supa-agent-frontend`.
+2. Start the development server:
+
+```bash
+pnpm --filter @products-monorepo/supa-agent-frontend dev
+```
+
+3. The app will be available at `http://localhost:3000` by default.
+
+4. To build for production:
+
+```bash
+pnpm --filter @products-monorepo/supa-agent-frontend build
+```
+
+5. To deploy, use Vercel or your preferred platform. See `vercel.json` for configuration.
 
 ## Testing Redis and BullMQ
 
@@ -127,6 +164,8 @@ This will start:
 - Qdrant vector database on port 6333
 - WhatsApp Service on port 3001
 - Products Agent Service on port 3002 (running in PM2 cluster mode)
+- Supa Agent Frontend on port 3000 (if configured)
+- Scraper Service and Workflows as needed
 
 ## Webhooks Configuration
 
