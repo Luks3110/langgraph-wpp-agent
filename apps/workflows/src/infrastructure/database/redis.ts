@@ -4,8 +4,10 @@ import { Redis } from 'ioredis';
 export class RedisConnection {
     private static instance: RedisConnection;
     private connection: Redis;
+    private options: RedisOptions;
 
     private constructor(options: RedisOptions = {}) {
+        this.options = options;
         this.connection = new Redis(options);
     }
 
@@ -18,6 +20,18 @@ export class RedisConnection {
 
     public getConnection(): Redis {
         return this.connection;
+    }
+
+    /**
+     * Get connection options in the format expected by BullMQ
+     */
+    public getConnectionOptions(): { host: string; port: number; password?: string; username?: string } {
+        return {
+            host: this.options.host || 'localhost',
+            port: this.options.port || 6379,
+            password: this.options.password,
+            username: this.options.username
+        };
     }
 
     public async disconnect(): Promise<void> {
