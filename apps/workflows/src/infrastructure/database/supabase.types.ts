@@ -107,6 +107,116 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_collections: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          tenant_id: string
+          company_id: string | null
+          qdrant_collection_name: string
+          metadata: Json
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          tenant_id: string
+          company_id?: string | null
+          qdrant_collection_name: string
+          metadata?: Json
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          tenant_id?: string
+          company_id?: string | null
+          qdrant_collection_name?: string
+          metadata?: Json
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_collections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_collections_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      node_executions: {
+        Row: {
+          id: string
+          workflow_execution_id: string
+          node_id: string
+          status: string
+          input_data: Json
+          output_data: Json
+          error_message: string | null
+          error_stack: string | null
+          retry_count: number
+          started_at: string
+          completed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          workflow_execution_id: string
+          node_id: string
+          status: string
+          input_data?: Json
+          output_data?: Json
+          error_message?: string | null
+          error_stack?: string | null
+          retry_count?: number
+          started_at?: string
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          workflow_execution_id?: string
+          node_id?: string
+          status?: string
+          input_data?: Json
+          output_data?: Json
+          error_message?: string | null
+          error_stack?: string | null
+          retry_count?: number
+          started_at?: string
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_executions_workflow_execution_id_fkey"
+            columns: ["workflow_execution_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_executions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_events: {
         Row: {
           clientid: string
@@ -332,6 +442,50 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_triggers: {
+        Row: {
+          id: string
+          workflow_id: string
+          node_id: string
+          webhook_path: string
+          webhook_secret: string | null
+          is_active: boolean
+          tenant_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          workflow_id: string
+          node_id: string
+          webhook_path: string
+          webhook_secret?: string | null
+          is_active?: boolean
+          tenant_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          workflow_id?: string
+          node_id?: string
+          webhook_path?: string
+          webhook_secret?: string | null
+          is_active?: boolean
+          tenant_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_triggers_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhooks: {
         Row: {
           channel_id: string | null
@@ -360,6 +514,65 @@ export type Database = {
             columns: ["channel_id"]
             isOneToOne: false
             referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_executions: {
+        Row: {
+          id: string
+          workflow_id: string
+          tenant_id: string
+          status: string
+          variables: Json
+          context: Json
+          current_nodes: string[]
+          completed_nodes: string[]
+          failed_nodes: string[]
+          error_message: string | null
+          started_at: string
+          completed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          workflow_id: string
+          tenant_id: string
+          status: string
+          variables?: Json
+          context?: Json
+          current_nodes?: string[]
+          completed_nodes?: string[]
+          failed_nodes?: string[]
+          error_message?: string | null
+          started_at?: string
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          workflow_id?: string
+          tenant_id?: string
+          status?: string
+          variables?: Json
+          context?: Json
+          current_nodes?: string[]
+          completed_nodes?: string[]
+          failed_nodes?: string[]
+          error_message?: string | null
+          started_at?: string
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_executions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
             referencedColumns: ["id"]
           },
         ]
