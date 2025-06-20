@@ -19,10 +19,9 @@ export function createWebhookExecutionRoutes(
     const workflowRepository = new WorkflowRepository(supabase);
     const jobQueue = new BullMQAdapter(redis);
     
-    // Use a simpler approach for event bus initialization
-    // The calling code should handle Redis connection configuration
+    // Use the getConnectionOptions method from RedisConnection
     const eventBus = new BullMQEventBus({
-        connection: redis,
+        connection: redis.getConnectionOptions(),
         queueName: 'workflow-events'
     });
 
