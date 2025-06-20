@@ -18,7 +18,13 @@ export function createWebhookExecutionRoutes(
     const webhookTriggerRepository = new SupabaseWebhookTriggerRepository(supabase);
     const workflowRepository = new WorkflowRepository(supabase);
     const jobQueue = new BullMQAdapter(redis);
-    const eventBus = new BullMQEventBus(redis);
+    
+    // Use a simpler approach for event bus initialization
+    // The calling code should handle Redis connection configuration
+    const eventBus = new BullMQEventBus({
+        connection: redis,
+        queueName: 'workflow-events'
+    });
 
     /**
      * Handle webhook trigger
