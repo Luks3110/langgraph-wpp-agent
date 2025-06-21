@@ -7,11 +7,3 @@
 node_modules/
 dist/
 temp/
-*.csv
-*.json
-!**/package.json
-!**/tsconfig.json
-
-# LangGraph API
-.langgraph_api
-.vercel
