@@ -2,7 +2,7 @@
   "name": "@products-monorepo/supa-agent-frontend",
   "private": true,
   "engines": {
-    "pnpm": "~10.6.0"
+    "pnpm": "~10.12.1"
   },
   "scripts": {
     "dev": "next dev --turbopack",
@@ -55,7 +55,7 @@
     "embla-carousel-react": "^8.5.2",
     "lucide-react": "^0.468.0",
     "motion": "^12.6.3",
-    "next": "15.2.2",
+    "next": "15.2.3",
     "next-themes": "^0.2.1",
     "prettier": "^3.3.3",
     "radix-ui": "^1.1.3",
