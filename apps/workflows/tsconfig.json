@@ -21,6 +21,6 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src/**/*", "test/**/*"],
+  "include": ["src/**/*"],
   "references": [{ "path": "../../packages/shared" }]
 }

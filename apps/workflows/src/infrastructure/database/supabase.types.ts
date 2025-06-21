@@ -619,6 +619,69 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_configs: {
+        Row: {
+          id: string
+          name: string
+          model: string
+          character: Json
+          max_tokens: number
+          temperature: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          model: string
+          character: Json
+          max_tokens: number
+          temperature: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          model?: string
+          character?: Json
+          max_tokens?: number
+          temperature?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      conversation_history: {
+        Row: {
+          id: string
+          conversation_id: string
+          client_id: string
+          role: string
+          content: string
+          timestamp: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          client_id: string
+          role: string
+          content: string
+          timestamp: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          client_id?: string
+          role?: string
+          content?: string
+          timestamp?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
