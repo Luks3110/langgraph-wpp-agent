@@ -30,7 +30,11 @@
         "bullmq": "^4.16.0",
         "dotenv": "^16.3.1",
         "ioredis": "^5.3.2",
-        "jsonstream2": "^3.0.0"
+        "jsonstream2": "^3.0.0",
+        "hono": "^4.0.0",
+        "@hono/node-server": "^1.8.0",
+        "@supabase/supabase-js": "^2.39.0",
+        "zod": "^3.22.0"
     },
     "packageManager": "pnpm@10.12.1",
     "engines": {

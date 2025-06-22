@@ -1,26 +1,33 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2024",
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "outDir": "dist",
-    "rootDir": "src",
-    "moduleResolution": "node",
-    "module": "ESNext",
-    "lib": ["ESNext"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "composite": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": false,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "noEmit": true,
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
-    },
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+      "@/*": ["./src/*"],
+      "@products-monorepo/shared": ["../../packages/shared/src"],
+      "@products-monorepo/shared/*": ["../../packages/shared/src/*"]
+    }
   },
-  "include": ["src/**/*", "test/**/*"],
-  "references": [{ "path": "../../packages/shared" }]
-}
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+} 
