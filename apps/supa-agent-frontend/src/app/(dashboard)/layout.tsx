@@ -18,7 +18,6 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <div
           className={cn(
@@ -32,6 +31,5 @@ export default function DashboardLayout({
           </div>
         </div>
       </body>
-    </html>
   );
 }

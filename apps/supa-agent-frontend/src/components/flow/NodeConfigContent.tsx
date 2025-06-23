@@ -15,8 +15,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import InstagramConfig from "./configs/InstagramConfig";
+import LogConfig from "./configs/LogConfig";
 import MercadoLivreQAConfig from "./configs/MercadoLivreQAConfig";
 import WebhookConfig from "./configs/WebhookConfig";
+import WebhookTriggerConfig from "./configs/WebhookTriggerConfig";
 import WhatsAppConfig from "./configs/WhatsAppConfig";
 
 // Default schema for basic nodes
@@ -124,7 +126,12 @@ export default function NodeConfigContent({
     case "instagram":
       return <InstagramConfig node={node} onUpdateNode={onUpdateNode} />;
     case "webhook":
-      return <WebhookConfig node={node} onUpdateNode={onUpdateNode} />;
+      // Legacy webhook nodes should use the new webhook trigger config
+      return <WebhookTriggerConfig node={node} onUpdateNode={onUpdateNode} />;
+    case "webhook-trigger":
+      return <WebhookTriggerConfig node={node} onUpdateNode={onUpdateNode} />;
+    case "log":
+      return <LogConfig node={node} onUpdateNode={onUpdateNode} />;
     default:
       return <DefaultNodeConfig node={node} onUpdateNode={onUpdateNode} />;
   }

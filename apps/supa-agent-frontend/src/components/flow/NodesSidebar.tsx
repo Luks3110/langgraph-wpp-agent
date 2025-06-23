@@ -6,6 +6,7 @@ import CategorySection from "./CategorySection";
 
 export default function NodesSidebar() {
   const { categories, addNode } = useFlowContext();
+  console.log("🚀 ~ NodesSidebar ~ categories:", categories)
 
   // Local state for search and category selection
   const [searchQuery, setSearchQuery] = useState("");

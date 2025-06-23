@@ -1,6 +1,8 @@
 import { supabase } from "./client.js";
 import { Tables, TablesInsert, TablesUpdate } from "../types/supabase.js";
 import { logger } from "../utils/logger.js";
+import { createClient } from "@supabase/supabase-js";
+import { Database } from "../types/supabase.js";
 
 type ExecutionRow = Tables<"workflow_executions">;
 type ExecutionInsert = TablesInsert<"workflow_executions">;
@@ -9,6 +11,37 @@ type ExecutionStepRow = Tables<"execution_steps">;
 type ExecutionStepInsert = TablesInsert<"execution_steps">;
 
 export class ExecutionService {
+  /**
+   * Get authenticated Supabase client for user operations
+   */
+  private getAuthenticatedClient(userToken?: string) {
+    if (!userToken) {
+      return supabase; // Use default client for system operations
+    }
+
+    // Create a new client with the user's token for RLS
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Missing Supabase configuration");
+    }
+
+    const userClient = createClient<Database>(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "X-Client-Info": "workflow-engine@1.0.0"
+        }
+      }
+    });
+
+    return userClient;
+  }
   /**
    * List executions with filtering
    */
@@ -165,7 +198,8 @@ export class ExecutionService {
       stepResults?: any;
       errorMessage?: string;
       completedAt?: string;
-    }
+    },
+    userToken?: string
   ): Promise<ExecutionRow> {
     const updateData: ExecutionUpdate = {};
 
@@ -174,7 +208,8 @@ export class ExecutionService {
     if (updates.errorMessage) updateData.error_message = updates.errorMessage;
     if (updates.completedAt) updateData.completed_at = updates.completedAt;
 
-    const { data, error } = await supabase
+    const client = this.getAuthenticatedClient(userToken);
+    const { data, error } = await client
       .from("workflow_executions")
       .update(updateData)
       .eq("execution_id", executionId)
@@ -266,15 +301,18 @@ export class ExecutionService {
   /**
    * Create execution step
    */
-  async createExecutionStep(stepData: {
-    executionId: string;
-    stepName: string;
-    stepType: "trigger" | "action";
-    status: "pending" | "running" | "completed" | "failed" | "skipped";
-    inputData?: any;
-    outputData?: any;
-    errorMessage?: string;
-  }): Promise<ExecutionStepRow> {
+  async createExecutionStep(
+    stepData: {
+      executionId: string;
+      stepName: string;
+      stepType: "trigger" | "action";
+      status: "pending" | "running" | "completed" | "failed" | "skipped";
+      inputData?: any;
+      outputData?: any;
+      errorMessage?: string;
+    },
+    userToken?: string
+  ): Promise<ExecutionStepRow> {
     // Get the database UUID for the execution
     const execution = await this.getExecutionByExecutionId(
       stepData.executionId
@@ -298,7 +336,8 @@ export class ExecutionService {
       insertData.completed_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
+    const client = this.getAuthenticatedClient(userToken);
+    const { data, error } = await client
       .from("execution_steps")
       .insert(insertData)
       .select()

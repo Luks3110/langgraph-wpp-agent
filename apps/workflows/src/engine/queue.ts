@@ -124,12 +124,14 @@ export class QueueManager {
     workflowId: string,
     executionId: string,
     triggerPayload: any,
-    options?: JobsOptions
+    options?: JobsOptions,
+    userContext?: { userId: string; userToken: string }
   ): Promise<Job> {
     const jobData = {
       workflowId,
       executionId,
       triggerPayload,
+      userContext,
       timestamp: new Date().toISOString()
     };
 

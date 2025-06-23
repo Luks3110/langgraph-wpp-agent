@@ -4,15 +4,15 @@ import {
   IconBolt,
   IconGitBranch,
   IconGraph,
+  IconSettings,
 } from "@tabler/icons-react";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { useState } from "react";
-import { createClient } from "../../../supabase/client";
+import { signOutAction } from "../../app/actions";
 import { Sidebar, SidebarBody, SidebarLink } from "../ui/sidebar";
 
 export function DashboardSidebar() {
-  const supabase = createClient();
   const links = [
     {
       label: "Dashboard",
@@ -35,9 +35,24 @@ export function DashboardSidebar() {
         <IconGitBranch className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
       ),
     },
+    {
+      label: "Workflows",
+      href: "/workflows",
+      icon: (
+        <IconSettings className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
   ];
 
   const [open, setOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await signOutAction();
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   return (
     <Sidebar open={open} setOpen={setOpen} animate={true}>
@@ -50,21 +65,21 @@ export function DashboardSidebar() {
             ))}
           </div>
         </div>
-        <SidebarLink
-          link={{
-            label: "Logout",
-            href: "#",
-            icon: (
+        <button
+          onClick={handleLogout}
+          className="flex items-center justify-start gap-2 group/sidebar py-2 text-neutral-700 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors cursor-pointer"
+        >
               <IconArrowLeft className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-            ),
-          }}
-          props={{
-            onClick: () => {
-              supabase.auth.signOut();
-            },
-            prefetch: true,
-          }}
-        />
+          <motion.span
+            animate={{
+              display: open ? "inline-block" : "none",
+              opacity: open ? 1 : 0,
+            }}
+            className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+          >
+            Logout
+          </motion.span>
+        </button>
       </SidebarBody>
     </Sidebar>
   );

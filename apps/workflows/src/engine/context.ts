@@ -67,10 +67,38 @@ export class ExecutionContext implements IExecutionContext {
   /**
    * Resolve dynamic values in step settings
    * Supports expressions like {{trigger.data}} or {{step1.output.result}}
+   * Also supports mixed expressions like "Hello {{trigger.name}}"
    */
   resolveValue(value: any): any {
-    if (typeof value === "string" && this.isExpression(value)) {
-      return this.evaluateExpression(value);
+    if (typeof value === "string") {
+      // Handle mixed expressions (text with embedded expressions)
+      if (value.includes("{{") && value.includes("}}")) {
+        let resolved = value;
+        const expressionRegex = /\{\{([^}]+)\}\}/g;
+        let match;
+
+        while ((match = expressionRegex.exec(value)) !== null) {
+          const fullExpression = match[0];
+          const expressionContent = match[1].trim();
+          const resolvedValue =
+            this.evaluateExpressionFromContent(expressionContent);
+
+          // Convert to string for replacement
+          const stringValue =
+            typeof resolvedValue === "object"
+              ? JSON.stringify(resolvedValue)
+              : String(resolvedValue);
+
+          resolved = resolved.replace(fullExpression, stringValue);
+        }
+
+        return resolved;
+      }
+
+      // Handle pure expressions
+      if (this.isExpression(value)) {
+        return this.evaluateExpression(value);
+      }
     }
 
     if (Array.isArray(value)) {
@@ -93,6 +121,82 @@ export class ExecutionContext implements IExecutionContext {
    */
   private isExpression(value: string): boolean {
     return value.trim().startsWith("{{") && value.trim().endsWith("}}");
+  }
+
+  /**
+   * Evaluate expression content (without the wrapping braces)
+   */
+  private evaluateExpressionFromContent(expressionContent: string): any {
+    try {
+      // Handle trigger references
+      if (expressionContent.startsWith("trigger.")) {
+        const path = expressionContent.replace("trigger.", "");
+        return this.getNestedValue(this.triggerPayload, path);
+      }
+
+      // Handle variables references
+      if (expressionContent.startsWith("vars.")) {
+        const path = expressionContent.replace("vars.", "");
+        return this.getNestedValue(this.variables, path);
+      }
+
+      // Handle step output references
+      if (expressionContent.includes(".output")) {
+        const [stepName, ...pathParts] = expressionContent.split(".");
+        const stepResult = this.getStepResult(stepName);
+
+        if (!stepResult) {
+          console.warn(`Step result not found for: ${stepName}`);
+          return undefined;
+        }
+
+        // If just accessing .output
+        if (pathParts.length === 1 && pathParts[0] === "output") {
+          return stepResult.output;
+        }
+
+        // If accessing nested path like step1.output.data.field
+        if (pathParts.length > 1 && pathParts[0] === "output") {
+          const outputPath = pathParts.slice(1).join(".");
+          return this.getNestedValue(stepResult.output, outputPath);
+        }
+      }
+
+      // Handle step metadata references
+      if (expressionContent.includes(".metadata")) {
+        const [stepName, ...pathParts] = expressionContent.split(".");
+        const stepResult = this.getStepResult(stepName);
+
+        if (!stepResult || !stepResult.metadata) {
+          return undefined;
+        }
+
+        if (pathParts.length === 1 && pathParts[0] === "metadata") {
+          return stepResult.metadata;
+        }
+
+        if (pathParts.length > 1 && pathParts[0] === "metadata") {
+          const metadataPath = pathParts.slice(1).join(".");
+          return this.getNestedValue(stepResult.metadata, metadataPath);
+        }
+      }
+
+      // Handle simple step reference (returns entire step result)
+      const stepResult = this.getStepResult(expressionContent);
+      if (stepResult) {
+        return stepResult;
+      }
+
+      // If no matches, return undefined
+      console.warn(`Unable to resolve expression: ${expressionContent}`);
+      return undefined;
+    } catch (error) {
+      console.error(
+        `Error evaluating expression "${expressionContent}":`,
+        error
+      );
+      return undefined;
+    }
   }
 
   /**

@@ -3,6 +3,8 @@ import { WorkflowDefinition } from "../types/workflow.js";
 import { Tables, TablesInsert, TablesUpdate } from "../types/supabase.js";
 import { QueueManager } from "../engine/queue.js";
 import { logger } from "../utils/logger.js";
+import { createClient } from "@supabase/supabase-js";
+import { Database } from "../types/supabase.js";
 
 type WorkflowRow = Tables<"workflows">;
 type WorkflowInsert = TablesInsert<"workflows">;
@@ -14,22 +16,67 @@ export class WorkflowService {
   private queueManager = new QueueManager();
 
   /**
-   * Create a new workflow
+   * Get authenticated Supabase client for user operations
    */
-  async createWorkflow(workflow: WorkflowDefinition): Promise<WorkflowRow> {
+  private getAuthenticatedClient(userToken?: string) {
+    if (!userToken) {
+      throw new Error("Authentication required - user token must be provided");
+    }
+
+    // Create a new client with the user's token for RLS
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Missing Supabase configuration");
+    }
+
+    const userClient = createClient<Database>(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "X-Client-Info": "workflow-engine@1.0.0"
+        }
+      }
+    });
+
+    return userClient;
+  }
+
+  /**
+   * Create a new workflow - requires authentication
+   */
+  async createWorkflow(
+    workflow: WorkflowDefinition,
+    userId: string,
+    userToken: string
+  ): Promise<WorkflowRow> {
+    if (!userId || !userToken) {
+      throw new Error(
+        "Authentication required - userId and userToken must be provided"
+      );
+    }
+
+    const client = this.getAuthenticatedClient(userToken);
+
     const workflowData: WorkflowInsert = {
       name: workflow.name,
       description: workflow.description,
       definition: workflow as any,
       version: workflow.version || 1,
       status: "active",
+      created_by: userId,
       // Set default values for required fields from existing schema
       edges: {},
       nodes: {},
       tenant_id: "00000000-0000-0000-0000-000000000000" // Default UUID, you may want to make this dynamic based on auth
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("workflows")
       .insert(workflowData)
       .select()
@@ -38,7 +85,8 @@ export class WorkflowService {
     if (error) {
       logger.error("Failed to create workflow", {
         error: error.message,
-        workflow: workflow.name
+        workflow: workflow.name,
+        userId
       });
       throw new Error(`Failed to create workflow: ${error.message}`);
     }
@@ -46,16 +94,17 @@ export class WorkflowService {
     logger.info("Workflow created", {
       workflowId: data.id,
       name: workflow.name,
-      version: workflow.version
+      version: workflow.version,
+      userId
     });
 
     return data;
   }
 
   /**
-   * Get workflow by ID
+   * Get workflow by ID without authentication (for internal/webhook use)
    */
-  async getWorkflow(id: string): Promise<WorkflowRow | null> {
+  async getWorkflowById(id: string): Promise<WorkflowRow | null> {
     const { data, error } = await supabase
       .from("workflows")
       .select("*")
@@ -74,18 +123,62 @@ export class WorkflowService {
   }
 
   /**
-   * List workflows with optional filtering
+   * Get workflow by ID with user authorization - requires authentication
    */
-  async listWorkflows(
-    options: {
-      status?: "active" | "inactive" | "archived";
-      limit?: number;
-      offset?: number;
-    } = {}
-  ): Promise<WorkflowRow[]> {
-    let query = supabase
+  async getWorkflow(
+    id: string,
+    userId: string,
+    userToken: string
+  ): Promise<WorkflowRow | null> {
+    if (!userId || !userToken) {
+      throw new Error(
+        "Authentication required - userId and userToken must be provided"
+      );
+    }
+
+    const client = this.getAuthenticatedClient(userToken);
+
+    const { data, error } = await client
       .from("workflows")
       .select("*")
+      .eq("id", id)
+      .eq("created_by", userId)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      logger.error("Failed to get workflow", {
+        error: error.message,
+        workflowId: id,
+        userId
+      });
+      throw new Error(`Failed to get workflow: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  /**
+   * List workflows with user authorization - requires authentication
+   */
+  async listWorkflows(options: {
+    status?: "active" | "inactive" | "archived";
+    limit?: number;
+    offset?: number;
+    userId: string;
+    userToken: string;
+  }): Promise<WorkflowRow[]> {
+    if (!options.userId || !options.userToken) {
+      throw new Error(
+        "Authentication required - userId and userToken must be provided"
+      );
+    }
+
+    const client = this.getAuthenticatedClient(options.userToken);
+
+    let query = client
+      .from("workflows")
+      .select("*")
+      .eq("created_by", options.userId)
       .order("created_at", { ascending: false });
 
     if (options.status) {
@@ -117,14 +210,30 @@ export class WorkflowService {
   }
 
   /**
-   * Update workflow
+   * Update workflow with user authorization - requires authentication
    */
   async updateWorkflow(
     id: string,
     updates: Partial<WorkflowDefinition> & {
       status?: "active" | "inactive" | "archived";
-    }
+    },
+    userId: string,
+    userToken: string
   ): Promise<WorkflowRow> {
+    if (!userId || !userToken) {
+      throw new Error(
+        "Authentication required - userId and userToken must be provided"
+      );
+    }
+
+    const client = this.getAuthenticatedClient(userToken);
+
+    // First check if the workflow exists and user owns it
+    const existing = await this.getWorkflow(id, userId, userToken);
+    if (!existing) {
+      throw new Error("Workflow not found or access denied");
+    }
+
     const updateData: WorkflowUpdate = {
       updated_at: new Date().toISOString()
     };
@@ -137,11 +246,6 @@ export class WorkflowService {
 
     // Update definition if provided
     if (updates.name || updates.trigger || updates.steps) {
-      const existing = await this.getWorkflow(id);
-      if (!existing) {
-        throw new Error("Workflow not found");
-      }
-
       const currentDefinition =
         existing.definition as unknown as WorkflowDefinition;
       updateData.definition = {
@@ -150,64 +254,108 @@ export class WorkflowService {
       } as any;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("workflows")
       .update(updateData)
       .eq("id", id)
+      .eq("created_by", userId)
       .select()
       .single();
 
     if (error) {
       logger.error("Failed to update workflow", {
         error: error.message,
-        workflowId: id
+        workflowId: id,
+        userId
       });
       throw new Error(`Failed to update workflow: ${error.message}`);
     }
 
     logger.info("Workflow updated", {
       workflowId: id,
-      updates: Object.keys(updates)
+      updates: Object.keys(updates),
+      userId
     });
 
     return data;
   }
 
   /**
-   * Delete workflow
+   * Delete workflow with user authorization - requires authentication
    */
-  async deleteWorkflow(id: string): Promise<void> {
-    // First check if workflow exists
-    const workflow = await this.getWorkflow(id);
+  async deleteWorkflow(
+    id: string,
+    userId: string,
+    userToken: string
+  ): Promise<void> {
+    if (!userId || !userToken) {
+      throw new Error(
+        "Authentication required - userId and userToken must be provided"
+      );
+    }
+
+    const client = this.getAuthenticatedClient(userToken);
+
+    // First check if workflow exists and user owns it
+    const workflow = await this.getWorkflow(id, userId, userToken);
     if (!workflow) {
-      throw new Error("Workflow not found");
+      throw new Error("Workflow not found or access denied");
     }
 
     // Cancel any scheduled executions
     await this.queueManager.cancelScheduledWorkflow(id);
 
     // Delete the workflow (cascade will handle related records)
-    const { error } = await supabase.from("workflows").delete().eq("id", id);
+    const { error } = await client
+      .from("workflows")
+      .delete()
+      .eq("id", id)
+      .eq("created_by", userId);
 
     if (error) {
       logger.error("Failed to delete workflow", {
         error: error.message,
-        workflowId: id
+        workflowId: id,
+        userId
       });
       throw new Error(`Failed to delete workflow: ${error.message}`);
     }
 
-    logger.info("Workflow deleted", { workflowId: id, name: workflow.name });
+    logger.info("Workflow deleted", {
+      workflowId: id,
+      name: workflow.name,
+      userId
+    });
   }
 
   /**
-   * Execute workflow manually
+   * Execute a workflow (can be called by system for webhooks or by users for manual execution)
    */
   async executeWorkflow(
     workflowId: string,
-    triggerPayload: any
+    triggerPayload: any,
+    userId?: string,
+    userToken?: string
   ): Promise<WorkflowExecutionRow> {
-    const workflow = await this.getWorkflow(workflowId);
+    let workflow: WorkflowRow | null = null;
+
+    if (userId && userToken) {
+      // User-authenticated execution - use authenticated client
+      workflow = await this.getWorkflow(workflowId, userId, userToken);
+    } else {
+      // System operation (webhook triggers) - use system client
+      const { data, error: workflowError } = await supabase
+        .from("workflows")
+        .select("*")
+        .eq("id", workflowId)
+        .single();
+
+      if (workflowError) {
+        throw new Error("Workflow not found");
+      }
+      workflow = data;
+    }
+
     if (!workflow) {
       throw new Error("Workflow not found");
     }
@@ -219,8 +367,11 @@ export class WorkflowService {
     // Generate execution ID
     const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    // Create execution record
-    const { data: execution, error } = await supabase
+    // Create execution record - use appropriate client based on authentication
+    const client =
+      userId && userToken ? this.getAuthenticatedClient(userToken) : supabase;
+
+    const { data: execution, error: executionError } = await client
       .from("workflow_executions")
       .insert({
         workflow_id: workflowId,
@@ -232,33 +383,41 @@ export class WorkflowService {
       .select()
       .single();
 
-    if (error) {
+    if (executionError) {
       logger.error("Failed to create execution", {
-        error: error.message,
+        error: executionError.message,
         workflowId,
-        executionId
+        executionId,
+        userId
       });
-      throw new Error(`Failed to create execution: ${error.message}`);
+      throw new Error(`Failed to create execution: ${executionError.message}`);
+    }
+
+    if (!execution) {
+      throw new Error("Failed to create execution - no data returned");
     }
 
     // Add to queue for processing
     await this.queueManager.addWorkflowExecution(
       workflowId,
       executionId,
-      triggerPayload
+      triggerPayload,
+      undefined, // options
+      userId && userToken ? { userId, userToken } : undefined
     );
 
     logger.info("Workflow execution started", {
       workflowId,
       executionId,
-      payloadSize: JSON.stringify(triggerPayload).length
+      payloadSize: JSON.stringify(triggerPayload).length,
+      userId
     });
 
     return execution;
   }
 
   /**
-   * Get workflow executions
+   * Get workflow executions with user authorization
    */
   async getWorkflowExecutions(
     workflowId: string,
@@ -266,8 +425,22 @@ export class WorkflowService {
       limit?: number;
       offset?: number;
       status?: "pending" | "running" | "completed" | "failed" | "cancelled";
+      userId?: string;
+      userToken?: string;
     } = {}
   ): Promise<WorkflowExecutionRow[]> {
+    // First check if workflow exists and user owns it
+    if (options.userId && options.userToken) {
+      const workflow = await this.getWorkflow(
+        workflowId,
+        options.userId,
+        options.userToken
+      );
+      if (!workflow) {
+        throw new Error("Workflow not found or access denied");
+      }
+    }
+
     let query = supabase
       .from("workflow_executions")
       .select("*")
@@ -304,16 +477,27 @@ export class WorkflowService {
   }
 
   /**
-   * Register webhook trigger
+   * Register webhook trigger - requires authentication
    */
   async registerWebhookTrigger(
     workflowId: string,
-    settings: any
+    settings: any,
+    userId: string,
+    userToken: string
   ): Promise<WorkflowTriggerRow> {
-    const webhookUrl = `/webhooks/${workflowId}`;
+    if (!userId || !userToken) {
+      throw new Error(
+        "Authentication required - userId and userToken must be provided"
+      );
+    }
+
+    const client = this.getAuthenticatedClient(userToken);
+
+    // Use the webhook URL from settings, or generate one based on workflow ID
+    const webhookUrl = settings.webhookUrl || `/webhooks/${workflowId}`;
     const webhookSecret = Math.random().toString(36).substr(2, 32);
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("workflow_triggers")
       .insert({
         workflow_id: workflowId,
@@ -329,7 +513,8 @@ export class WorkflowService {
     if (error) {
       logger.error("Failed to register webhook trigger", {
         error: error.message,
-        workflowId
+        workflowId,
+        userId
       });
       throw new Error(`Failed to register webhook trigger: ${error.message}`);
     }
@@ -337,17 +522,31 @@ export class WorkflowService {
     logger.info("Webhook trigger registered", {
       workflowId,
       webhookUrl,
-      triggerId: data.id
+      triggerId: data.id,
+      userId
     });
 
     return data;
   }
 
   /**
-   * Update webhook trigger
+   * Update webhook trigger - requires authentication
    */
-  async updateWebhookTrigger(workflowId: string, settings: any): Promise<void> {
-    const { error } = await supabase
+  async updateWebhookTrigger(
+    workflowId: string,
+    settings: any,
+    userId: string,
+    userToken: string
+  ): Promise<void> {
+    if (!userId || !userToken) {
+      throw new Error(
+        "Authentication required - userId and userToken must be provided"
+      );
+    }
+
+    const client = this.getAuthenticatedClient(userToken);
+
+    const { error } = await client
       .from("workflow_triggers")
       .update({ settings })
       .eq("workflow_id", workflowId)
@@ -356,12 +555,13 @@ export class WorkflowService {
     if (error) {
       logger.error("Failed to update webhook trigger", {
         error: error.message,
-        workflowId
+        workflowId,
+        userId
       });
       throw new Error(`Failed to update webhook trigger: ${error.message}`);
     }
 
-    logger.info("Webhook trigger updated", { workflowId });
+    logger.info("Webhook trigger updated", { workflowId, userId });
   }
 }
 
@@ -384,11 +584,35 @@ export class WebhookService {
   ): Promise<{ success: boolean; executionId?: string; error?: string }> {
     try {
       // Find workflow by webhook URL pattern
-      const workflowId = webhookId; // Assuming webhookId is the workflowId for simplicity
+      const webhookUrl = `/webhooks/${webhookId}`;
 
-      const workflow = await this.workflowService.getWorkflow(workflowId);
+      console.log("🚀 ~ WebhookService ~ webhookUrl:", webhookUrl);
+      // Look up the workflow trigger by webhook URL
+      const { data: trigger, error: triggerError } = await supabase
+        .from("workflow_triggers")
+        .select("workflow_id")
+        .eq("webhook_url", webhookUrl.trim())
+        .eq("trigger_type", "webhook")
+        .eq("status", "active")
+        .single();
+
+      console.log("🚀 ~ WebhookService ~ trigger:", trigger);
+      console.log("🚀 ~ WebhookService ~ triggerError:", triggerError);
+
+      if (triggerError || !trigger) {
+        return { success: false, error: "Webhook not found or inactive" };
+      }
+
+      const workflowId = trigger.workflow_id;
+      if (!workflowId) {
+        return { success: false, error: "Invalid workflow ID" };
+      }
+
+      const workflow = await this.workflowService.getWorkflowById(workflowId);
+
+      console.log("🚀 ~ WebhookService ~ workflow:", workflow);
       if (!workflow) {
-        return { success: false, error: "Webhook not found" };
+        return { success: false, error: "Associated workflow not found" };
       }
 
       if (workflow.status !== "active") {
@@ -398,7 +622,7 @@ export class WebhookService {
       // Create webhook event record
       await this.recordWebhookEvent(webhookId, requestData);
 
-      // Execute workflow
+      // Execute workflow without authentication (webhook execution)
       const execution = await this.workflowService.executeWorkflow(workflowId, {
         webhook: requestData.payload,
         headers: requestData.headers,
@@ -425,6 +649,7 @@ export class WebhookService {
    * Get webhook info
    */
   async getWebhookInfo(webhookId: string): Promise<WorkflowTriggerRow | null> {
+    console.log("🚀 ~ WebhookService ~ getWebhookInfo ~ supabase:", supabase);
     const { data, error } = await supabase
       .from("workflow_triggers")
       .select("*")

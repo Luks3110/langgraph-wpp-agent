@@ -27,19 +27,43 @@ export class WorkflowExecutor {
    * Process a workflow execution job from BullMQ
    */
   async processExecution(job: Job): Promise<void> {
-    const { workflowId, executionId, triggerPayload } = job.data;
+    const { workflowId, executionId, triggerPayload, userContext } = job.data;
 
     try {
       // Update execution status to running
-      await this.executionService.updateExecutionByExecutionId(executionId, {
-        status: "running"
-      });
+      await this.executionService.updateExecutionByExecutionId(
+        executionId,
+        {
+          status: "running"
+        },
+        userContext?.userToken
+      );
 
       // Fetch workflow definition from database
       const workflowService = new (
         await import("../database/workflows.js")
       ).WorkflowService();
-      const workflowRow = await workflowService.getWorkflow(workflowId);
+
+      let workflowRow;
+      if (userContext?.userId && userContext?.userToken) {
+        // Use authenticated access for user workflows
+        workflowRow = await workflowService.getWorkflow(
+          workflowId,
+          userContext.userId,
+          userContext.userToken
+        );
+      } else {
+        // For system operations (webhooks), we need a different approach
+        // This will fail with current RLS policies - need to handle system access
+        const { supabase } = await import("../database/client.js");
+        const { data } = await supabase
+          .from("workflows")
+          .select("*")
+          .eq("id", workflowId)
+          .single();
+        workflowRow = data;
+      }
+
       if (!workflowRow) {
         throw new Error(`Workflow not found: ${workflowId}`);
       }
@@ -53,21 +77,29 @@ export class WorkflowExecutor {
       const result = await this.execute(workflow, triggerPayload);
 
       // Update execution with results
-      await this.executionService.updateExecutionByExecutionId(executionId, {
-        status: result.success ? "completed" : "failed",
-        stepResults: result.results,
-        errorMessage: result.error,
-        completedAt: new Date().toISOString()
-      });
+      await this.executionService.updateExecutionByExecutionId(
+        executionId,
+        {
+          status: result.success ? "completed" : "failed",
+          stepResults: result.results,
+          errorMessage: result.error,
+          completedAt: new Date().toISOString()
+        },
+        userContext?.userToken
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
 
-      await this.executionService.updateExecutionByExecutionId(executionId, {
-        status: "failed",
-        errorMessage: errorMessage,
-        completedAt: new Date().toISOString()
-      });
+      await this.executionService.updateExecutionByExecutionId(
+        executionId,
+        {
+          status: "failed",
+          errorMessage: errorMessage,
+          completedAt: new Date().toISOString()
+        },
+        userContext?.userToken
+      );
 
       throw error;
     }

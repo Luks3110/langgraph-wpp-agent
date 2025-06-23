@@ -3,7 +3,7 @@ import DashboardHeader from "@/components/dashboard/dashboard-header";
 import PerformanceMetrics from "@/components/dashboard/performance-metrics";
 import QuickActionPanel from "@/components/dashboard/quick-action-panel";
 import RecentActivityFeed from "@/components/dashboard/recent-activity-feed";
-import { SubscriptionCheck } from "@/components/subscription-check";
+import SubscriptionCheck from "@/components/subscription-check";
 import { Button } from "@/components/ui/button";
 import { Bot, Share2 } from "lucide-react";
 import Link from "next/link";

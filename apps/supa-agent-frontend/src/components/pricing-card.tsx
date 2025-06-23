@@ -1,6 +1,7 @@
 "use client";
 
 import { User } from "@supabase/supabase-js";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -14,9 +15,17 @@ export default function PricingCard({
   item,
   user,
 }: {
-  item: any;
+  item: any; // Stripe plan object
   user: User | null;
 }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Ensure consistent rendering between server and client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Handle checkout process
   const handleCheckout = async (priceId: string) => {
     if (!user) {
@@ -25,68 +34,99 @@ export default function PricingCard({
       return;
     }
 
+    setIsLoading(true);
+
     try {
+      console.log("Starting checkout process for user:", user.id);
+      console.log("Price ID:", priceId);
+      
+      // Call the checkout API
       const response = await fetch("/api/create-checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Customer-Email": user.email || "",
         },
         body: JSON.stringify({
-          price_id: priceId,
-          user_id: user.id,
-          return_url: `${window.location.origin}/dashboard`,
+          priceId,
+          userId: user.id,
+          userEmail: user.email,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Error creating checkout session");
+        throw new Error(data.error || "Failed to create checkout session");
       }
 
-      // Redirect to Stripe checkout
-      if (data?.url) {
+      if (data.url) {
+        console.log("Redirecting to checkout:", data.url);
         window.location.href = data.url;
       } else {
         throw new Error("No checkout URL returned");
       }
     } catch (error) {
       console.error("Error creating checkout session:", error);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Prevent hydration mismatch by ensuring consistent rendering
+  if (!isClient) {
+    return (
+      <Card className="w-full max-w-sm mx-auto">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">
+            $300
+            <span className="text-sm font-normal text-muted-foreground">
+              /month
+            </span>
+          </CardTitle>
+          <CardDescription className="text-lg">
+            Loading...
+          </CardDescription>
+        </CardHeader>
+        
+        <CardFooter>
+          <Button
+            disabled={true}
+            className="w-full"
+          >
+            Loading...
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
+
+  // Extract price information from Stripe plan object
+  const price = item?.amount ? (item.amount / 100).toFixed(0) : "300";
+  const interval = item?.interval || "month";
+  const priceId = item?.id || "";
+
   return (
-    <Card
-      className={`w-[350px] relative overflow-hidden ${item.popular ? "border-2 border-blue-500 shadow-xl scale-105" : "border border-gray-200"}`}
-    >
-      {item.popular && (
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 opacity-30" />
-      )}
-      <CardHeader className="relative">
-        {item.popular && (
-          <div className="px-4 py-1.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-full w-fit mb-4">
-            Most Popular
-          </div>
-        )}
-        <CardTitle className="text-2xl font-bold tracking-tight text-gray-900">
-          {item.name}
-        </CardTitle>
-        <CardDescription className="flex items-baseline gap-2 mt-2">
-          <span className="text-4xl font-bold text-gray-900">
-            ${item?.amount / 100}
+    <Card className="w-full max-w-sm mx-auto">
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold">
+          ${price}
+          <span className="text-sm font-normal text-muted-foreground">
+            /{interval}
           </span>
-          <span className="text-gray-600">/{item?.interval}</span>
+        </CardTitle>
+        <CardDescription className="text-lg">
+          {item?.nickname || `${price} per ${interval}`}
         </CardDescription>
       </CardHeader>
-      <CardFooter className="relative">
+      
+      <CardFooter>
         <Button
-          onClick={async () => {
-            await handleCheckout(item.id);
-          }}
-          className={`w-full py-6 text-lg font-medium`}
+          onClick={() => handleCheckout(priceId)}
+          disabled={isLoading || !priceId}
+          className="w-full"
         >
-          Get Started
+          {isLoading ? "Processing..." : "Get Started"}
         </Button>
       </CardFooter>
     </Card>

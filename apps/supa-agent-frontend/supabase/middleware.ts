@@ -8,8 +8,8 @@ export const updateSession = async (request: NextRequest) => {
     // Create an unmodified response
     let response = NextResponse.next({
       request: {
-        headers: request.headers,
-      },
+        headers: request.headers
+      }
     });
 
     const supabase = createServerClient(
@@ -20,7 +20,7 @@ export const updateSession = async (request: NextRequest) => {
           getAll() {
             return request.cookies.getAll().map(({ name, value }) => ({
               name,
-              value,
+              value
             }));
           },
           setAll(cookiesToSet) {
@@ -28,22 +28,30 @@ export const updateSession = async (request: NextRequest) => {
               request.cookies.set(name, value);
               response = NextResponse.next({
                 request: {
-                  headers: request.headers,
-                },
+                  headers: request.headers
+                }
               });
               response.cookies.set(name, value, options);
             });
-          },
-        },
+          }
+        }
       }
     );
 
     // This will refresh session if expired - required for Server Components
     // https://supabase.com/docs/guides/auth/server-side/nextjs
-    const { data: { user }, error } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error
+    } = await supabase.auth.getUser();
 
-    // protected routes
-    if (request.nextUrl.pathname.startsWith("/dashboard") && error) {
+    // protected routes - these match the (dashboard) route group
+    const protectedRoutes = ["/dashboard", "/agents", "/workflows"];
+    const isProtectedRoute = protectedRoutes.some((route) =>
+      request.nextUrl.pathname.startsWith(route)
+    );
+
+    if (isProtectedRoute && error) {
       return NextResponse.redirect(new URL("/sign-in", request.url));
     }
 
@@ -58,8 +66,8 @@ export const updateSession = async (request: NextRequest) => {
     // Check out http://localhost:3000 for Next Steps.
     return NextResponse.next({
       request: {
-        headers: request.headers,
-      },
+        headers: request.headers
+      }
     });
   }
 };

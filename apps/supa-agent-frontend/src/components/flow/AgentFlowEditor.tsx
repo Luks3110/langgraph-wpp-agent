@@ -9,6 +9,13 @@ import FlowCanvas from "./FlowCanvas";
 import NodeConfigDialog from "./NodeConfigDialog";
 import NodesSidebar from "./NodesSidebar";
 import SaveControls from "./SaveControls";
+import WorkflowNameInput from "./WorkflowNameInput";
+import { FlowWorkflow } from "@/types/workflow";
+
+interface AgentFlowEditorProps {
+  initialWorkflowData?: FlowWorkflow | null;
+  workflowId?: string | null;
+}
 
 function AgentFlowEditorContent() {
   const {
@@ -20,6 +27,10 @@ function AgentFlowEditorContent() {
     updateNodeData,
     setNodes,
     undo,
+    currentWorkflowId,
+    workflowName,
+    workflowDescription,
+    updateWorkflowMetadata,
   } = useFlowContext();
 
   // Get the title and description for the selected node
@@ -42,19 +53,28 @@ function AgentFlowEditorContent() {
     setConfigDialogOpen(false);
   };
 
+  // Determine if we're editing or creating
+  const isEditing = !!currentWorkflowId;
+  const pageTitle = isEditing ? "Edit Agent Flow" : "Create Agent Flow";
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <header className="bg-white border-b py-4 px-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/dashboard/agents">
+            <Link href="/dashboard">
               <Button variant="ghost" size="icon">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
             <div className="flex items-center gap-2">
               <Bot className="h-6 w-6 text-blue-600" />
-              <h1 className="text-xl font-semibold">Create Agent Flow</h1>
+              <WorkflowNameInput
+                workflowName={workflowName}
+                workflowDescription={workflowDescription}
+                onUpdateWorkflow={updateWorkflowMetadata}
+                isEditing={isEditing}
+              />
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -91,10 +111,13 @@ function AgentFlowEditorContent() {
   );
 }
 
-export default function AgentFlowEditor() {
+export default function AgentFlowEditor({ initialWorkflowData, workflowId }: AgentFlowEditorProps) {
   return (
     <ReactFlowProvider>
-      <FlowProvider>
+      <FlowProvider 
+        initialWorkflowData={initialWorkflowData}
+        workflowId={workflowId}
+      >
         <AgentFlowEditorContent />
       </FlowProvider>
     </ReactFlowProvider>

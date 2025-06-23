@@ -34,14 +34,28 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, stripe-signature",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
+
+// Create service role client to bypass RLS
+function createServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+}
 
 // Utility functions
 async function logAndStoreWebhookEvent(
   supabaseClient: any,
   event: any,
-  data: any,
+  data: any
 ): Promise<void> {
   const { error } = await supabaseClient.from("webhook_events").insert({
     event_type: event.type,
@@ -49,7 +63,7 @@ async function logAndStoreWebhookEvent(
     stripe_event_id: event.id,
     created_at: new Date(event.created * 1000).toISOString(),
     modified_at: new Date(event.created * 1000).toISOString(),
-    data,
+    data
   } as WebhookEvent);
 
   if (error) {
@@ -61,7 +75,7 @@ async function logAndStoreWebhookEvent(
 async function updateSubscriptionStatus(
   supabaseClient: any,
   stripeId: string,
-  status: string,
+  status: string
 ): Promise<void> {
   const { error } = await supabaseClient
     .from("subscriptions")
@@ -74,41 +88,87 @@ async function updateSubscriptionStatus(
   }
 }
 
+// Improved user finding function
+async function findOrCreateUser(
+  supabaseClient: any,
+  stripe: Stripe,
+  subscription: any
+): Promise<string | null> {
+  // First try to get user ID from metadata
+  let userId = subscription.metadata?.user_id || subscription.metadata?.userId;
+
+  if (userId) {
+    // Verify the user exists in our database
+    const { data: existingUser } = await supabaseClient
+      .from("users")
+      .select("id, user_id")
+      .eq("user_id", userId)
+      .single();
+
+    if (existingUser) {
+      console.log("Found user by metadata:", userId);
+      return userId;
+    }
+  }
+
+  // If no user ID in metadata or user not found, try to find by email
+  try {
+    const customer = await stripe.customers.retrieve(subscription.customer);
+
+    if (!("deleted" in customer) && customer.email) {
+      console.log("Looking for user by email:", customer.email);
+
+      // Try to find user by email
+      const { data: userData, error: userError } = await supabaseClient
+        .from("users")
+        .select("id, user_id, email")
+        .eq("email", customer.email)
+        .single();
+
+      if (userData && !userError) {
+        console.log("Found user by email:", userData.email);
+        return userData.user_id;
+      }
+
+      console.error("User not found by email:", customer.email, userError);
+
+      // As a last resort, try to find in auth.users and create in public.users if needed
+      // This requires using the service role client to query auth schema
+      console.log(
+        "Attempting to find user in auth.users and create in public.users if needed"
+      );
+
+      // Note: This approach requires proper RLS policies or service role access
+      // We'll return null here and let the subscription creation fail with proper error
+      return null;
+    }
+  } catch (error) {
+    console.error("Error retrieving customer or finding user:", error);
+  }
+
+  return null;
+}
+
 // Event handlers
 async function handleSubscriptionCreated(
   supabaseClient: any,
   event: any,
-  stripe: Stripe,
+  stripe: Stripe
 ) {
   const subscription = event.data.object;
   console.log("Handling subscription created:", subscription.id);
 
-  // Try to get user information
-  let userId = subscription.metadata?.user_id || subscription.metadata?.userId;
+  const userId = await findOrCreateUser(supabaseClient, stripe, subscription);
+
   if (!userId) {
-    try {
-      const customer = await stripe.customers.retrieve(subscription.customer);
-      // Check if customer is not deleted and has email
-      if (!("deleted" in customer) && customer.email) {
-        const { data: userData } = await supabaseClient
-          .from("users")
-          .select("id")
-          .eq("email", customer.email)
-          .single();
-
-        userId = userData?.id;
-      }
-
-      if (!userId) {
-        throw new Error("User not found");
-      }
-    } catch (error) {
-      console.error("Unable to find associated user:", error);
-      return NextResponse.json(
-        { error: "Unable to find associated user" },
-        { status: 400, headers: corsHeaders },
-      );
-    }
+    console.error(
+      "Unable to find or create associated user for subscription:",
+      subscription.id
+    );
+    return NextResponse.json(
+      { error: "Unable to find associated user" },
+      { status: 400, headers: corsHeaders }
+    );
   }
 
   const subscriptionData: SubscriptionData = {
@@ -127,7 +187,7 @@ async function handleSubscriptionCreated(
     customer_id: subscription.customer,
     metadata: subscription.metadata || {},
     canceled_at: subscription.canceled_at,
-    ended_at: subscription.ended_at,
+    ended_at: subscription.ended_at
   };
 
   // First, check if a subscription with this stripe_id already exists
@@ -142,25 +202,26 @@ async function handleSubscriptionCreated(
     {
       // If we found an existing subscription, use its UUID, otherwise let Supabase generate one
       ...(existingSubscription?.id ? { id: existingSubscription.id } : {}),
-      ...subscriptionData,
+      ...subscriptionData
     },
     {
       // Use stripe_id as the match key for upsert
-      onConflict: "stripe_id",
-    },
+      onConflict: "stripe_id"
+    }
   );
 
   if (error) {
     console.error("Error creating subscription:", error);
     return NextResponse.json(
       { error: "Failed to create subscription" },
-      { status: 500, headers: corsHeaders },
+      { status: 500, headers: corsHeaders }
     );
   }
 
+  console.log("Subscription created successfully for user:", userId);
   return NextResponse.json(
     { message: "Subscription created successfully" },
-    { status: 200, headers: corsHeaders },
+    { status: 200, headers: corsHeaders }
   );
 }
 
@@ -177,7 +238,7 @@ async function handleSubscriptionUpdated(supabaseClient: any, event: any) {
       cancel_at_period_end: subscription.cancel_at_period_end,
       metadata: subscription.metadata,
       canceled_at: subscription.canceled_at,
-      ended_at: subscription.ended_at,
+      ended_at: subscription.ended_at
     })
     .eq("stripe_id", subscription.id);
 
@@ -185,13 +246,13 @@ async function handleSubscriptionUpdated(supabaseClient: any, event: any) {
     console.error("Error updating subscription:", error);
     return NextResponse.json(
       { error: "Failed to update subscription" },
-      { status: 500, headers: corsHeaders },
+      { status: 500, headers: corsHeaders }
     );
   }
 
   return NextResponse.json(
     { message: "Subscription updated successfully" },
-    { status: 200, headers: corsHeaders },
+    { status: 200, headers: corsHeaders }
   );
 }
 
@@ -212,13 +273,13 @@ async function handleSubscriptionDeleted(supabaseClient: any, event: any) {
 
     return NextResponse.json(
       { message: "Subscription deleted successfully" },
-      { status: 200, headers: corsHeaders },
+      { status: 200, headers: corsHeaders }
     );
   } catch (error) {
     console.error("Error deleting subscription:", error);
     return NextResponse.json(
       { error: "Failed to process subscription deletion" },
-      { status: 500, headers: corsHeaders },
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -226,7 +287,7 @@ async function handleSubscriptionDeleted(supabaseClient: any, event: any) {
 async function handleCheckoutSessionCompleted(
   supabaseClient: any,
   event: any,
-  stripe: Stripe,
+  stripe: Stripe
 ) {
   const session = event.data.object;
   console.log("Handling checkout session completed:", session.id);
@@ -240,7 +301,7 @@ async function handleCheckoutSessionCompleted(
     console.log("No subscription ID found in checkout session");
     return NextResponse.json(
       { message: "No subscription in checkout session" },
-      { status: 200, headers: corsHeaders },
+      { status: 200, headers: corsHeaders }
     );
   }
 
@@ -254,9 +315,9 @@ async function handleCheckoutSessionCompleted(
       {
         metadata: {
           ...session.metadata,
-          checkoutSessionId: session.id,
-        },
-      },
+          checkoutSessionId: session.id
+        }
+      }
     );
 
     const supabaseUpdateResult = await supabaseClient
@@ -264,38 +325,38 @@ async function handleCheckoutSessionCompleted(
       .update({
         metadata: {
           ...session.metadata,
-          checkoutSessionId: session.id,
+          checkoutSessionId: session.id
         },
         user_id: session.metadata?.userId || session.metadata?.user_id,
         status: stripeSubscription.status,
         current_period_start: stripeSubscription.current_period_start,
         current_period_end: stripeSubscription.current_period_end,
-        cancel_at_period_end: stripeSubscription.cancel_at_period_end,
+        cancel_at_period_end: stripeSubscription.cancel_at_period_end
       })
       .eq("stripe_id", subscriptionId);
 
     if (supabaseUpdateResult.error) {
       console.error(
         "Error updating Supabase subscription:",
-        supabaseUpdateResult.error,
+        supabaseUpdateResult.error
       );
       throw new Error(
-        `Supabase update failed: ${supabaseUpdateResult.error.message}`,
+        `Supabase update failed: ${supabaseUpdateResult.error.message}`
       );
     }
 
     return NextResponse.json(
       { message: "Checkout session completed successfully", subscriptionId },
-      { status: 200, headers: corsHeaders },
+      { status: 200, headers: corsHeaders }
     );
   } catch (error: any) {
     console.error("Error processing checkout completion:", error);
     return NextResponse.json(
       {
         error: "Failed to process checkout completion",
-        details: error.message,
+        details: error.message
       },
-      { status: 500, headers: corsHeaders },
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -326,21 +387,21 @@ async function handleInvoicePaymentSucceeded(supabaseClient: any, event: any) {
         amountPaid: String(invoice.amount_paid / 100),
         currency: invoice.currency,
         status: "succeeded",
-        email: subscription?.email || invoice.customer_email,
-      },
+        email: subscription?.email || invoice.customer_email
+      }
     };
 
     await supabaseClient.from("webhook_events").insert(webhookData);
 
     return NextResponse.json(
       { message: "Invoice payment succeeded" },
-      { status: 200, headers: corsHeaders },
+      { status: 200, headers: corsHeaders }
     );
   } catch (error) {
     console.error("Error processing successful payment:", error);
     return NextResponse.json(
       { error: "Failed to process successful payment" },
-      { status: 500, headers: corsHeaders },
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -371,8 +432,8 @@ async function handleInvoicePaymentFailed(supabaseClient: any, event: any) {
         amountDue: String(invoice.amount_due / 100),
         currency: invoice.currency,
         status: "failed",
-        email: subscription?.email || invoice.customer_email,
-      },
+        email: subscription?.email || invoice.customer_email
+      }
     };
 
     await supabaseClient.from("webhook_events").insert(webhookData);
@@ -381,19 +442,19 @@ async function handleInvoicePaymentFailed(supabaseClient: any, event: any) {
       await updateSubscriptionStatus(
         supabaseClient,
         subscriptionId,
-        "past_due",
+        "past_due"
       );
     }
 
     return NextResponse.json(
       { message: "Invoice payment failed" },
-      { status: 200, headers: corsHeaders },
+      { status: 200, headers: corsHeaders }
     );
   } catch (error) {
     console.error("Error processing failed payment:", error);
     return NextResponse.json(
       { error: "Failed to process failed payment" },
-      { status: 500, headers: corsHeaders },
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -411,7 +472,7 @@ export async function POST(req: Request) {
     if (!signature) {
       return NextResponse.json(
         { error: "No signature found" },
-        { status: 400, headers: corsHeaders },
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -421,7 +482,7 @@ export async function POST(req: Request) {
     if (!webhookSecret) {
       return NextResponse.json(
         { error: "Webhook secret not configured" },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -433,22 +494,27 @@ export async function POST(req: Request) {
       console.error("Error verifying webhook signature:", err);
       return NextResponse.json(
         { error: "Invalid signature" },
-        { status: 400, headers: corsHeaders },
+        { status: 400, headers: corsHeaders }
       );
     }
 
     // Create Supabase client with service role key to bypass RLS
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceRoleKey) {
       return NextResponse.json(
         { error: "Supabase credentials not configured properly" },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: corsHeaders }
       );
     }
 
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
     // Log the webhook event
     await logAndStoreWebhookEvent(supabaseClient, event, event.data.object);
@@ -465,7 +531,7 @@ export async function POST(req: Request) {
         return await handleCheckoutSessionCompleted(
           supabaseClient,
           event,
-          stripe,
+          stripe
         );
       case "invoice.payment_succeeded":
         return await handleInvoicePaymentSucceeded(supabaseClient, event);
@@ -474,14 +540,14 @@ export async function POST(req: Request) {
       default:
         return NextResponse.json(
           { message: `Unhandled event type: ${event.type}` },
-          { status: 200, headers: corsHeaders },
+          { status: 200, headers: corsHeaders }
         );
     }
   } catch (err: any) {
     console.error("Error processing webhook:", err);
     return NextResponse.json(
       { error: err.message },
-      { status: 500, headers: corsHeaders },
+      { status: 500, headers: corsHeaders }
     );
   }
 }

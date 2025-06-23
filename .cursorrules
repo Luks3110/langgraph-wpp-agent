@@ -18,11 +18,13 @@ The application we are working on uses the following tech stack:
 - Express for APIs
 - Zod for validation
 - PNPM is the package maanger
-- Gemini 2.0 as the LLM
+- Gemini 2.5 as the LLM
+- Next.js 15
 
 ## Monorepo Structure
 
 - /packages/shared: Common types and utilities
+- /apps/workflows: the backend for creating and running the workflows
 - /apps/whatsapp-service: WhatsApp integration service
 - /apps/products-agent: LLM agent service for product recommendations
 - /apps/supa-agent-frontend: Frontend for the agent
@@ -42,6 +44,7 @@ The application we are working on uses the following tech stack:
 - Leverage ESM module format consistently (import/export with .js extensions)
 - Structure agent workflows using LangGraph state machines
 - Implement proper error handling with Redis, BullMQ, and Qdrant operations
+- Dont ever restart anything or start servers, we use tsx and hot reloading on all packages and when testing the server is already started
 
 ### Coding Standards
 

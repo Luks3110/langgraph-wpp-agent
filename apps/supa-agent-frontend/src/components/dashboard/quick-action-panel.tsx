@@ -36,7 +36,7 @@ export default function QuickActionPanel() {
             </Button>
           </Link>
 
-          <Link href="/dashboard/agents/create-flow" className="w-full">
+          <Link href="/agents/create-flow" className="w-full">
             <Button
               variant="outline"
               className="w-full h-auto py-4 px-3 flex flex-col items-center justify-center gap-2"

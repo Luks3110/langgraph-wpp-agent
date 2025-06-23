@@ -4,12 +4,18 @@ import { Database } from "../types/supabase.js";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 console.log("🚀 ~ supabaseUrl:", supabaseUrl);
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
-console.log("🚀 ~ supabaseKey:", supabaseKey);
+
+// Use service role key for system operations, fallback to anon key for backward compatibility
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+console.log(
+  "🚀 ~ using key type:",
+  process.env.SUPABASE_SERVICE_ROLE_KEY ? "service_role" : "anon"
+);
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error(
-    "Missing Supabase configuration. Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables."
+    "Missing Supabase configuration. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY) environment variables."
   );
 }
 

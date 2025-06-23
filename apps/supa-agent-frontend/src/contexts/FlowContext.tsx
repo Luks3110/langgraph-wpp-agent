@@ -6,7 +6,8 @@ import { useWorkflowProcessor } from "@/hooks/flow/useWorkflowProcessor";
 import { useFlowHistory } from "@/hooks/useFlowHistory";
 import { FlowNode } from "@/utils/flow-types";
 import { Edge, OnConnectStartParams } from "@xyflow/react";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+import { FlowWorkflow } from "@/types/workflow";
 
 interface FlowContextType {
   // Flow state
@@ -46,15 +47,33 @@ interface FlowContextType {
   // Workflow operations
   isSaving: boolean;
   saveWorkflow: () => Promise<void>;
+  currentWorkflowId: string | null;
+
+  // Workflow metadata
+  workflowName: string;
+  workflowDescription?: string;
+  updateWorkflowMetadata: (name: string, description?: string) => void;
 }
 
 export const FlowContext = createContext<FlowContextType | undefined>(
   undefined
 );
 
-export function FlowProvider({ children }: { children: React.ReactNode }) {
+interface FlowProviderProps {
+  children: React.ReactNode;
+  initialWorkflowData?: FlowWorkflow | null;
+  workflowId?: string | null;
+}
+
+export function FlowProvider({ children, initialWorkflowData, workflowId }: FlowProviderProps) {
+  // Convert and initialize with provided workflow data
+  // Cast the generic FlowNode from workflow.ts to the typed FlowNode from flow-types.ts
+  const initialNodes: FlowNode[] = initialWorkflowData?.nodes ? 
+    initialWorkflowData.nodes.map(node => node as FlowNode) : [];
+  const initialEdges = initialWorkflowData?.edges || [];
+
   // Use flow history for undo/redo
-  const { nodes, edges, setNodes, setEdges, undo } = useFlowHistory();
+  const { nodes, edges, setNodes, setEdges, undo } = useFlowHistory(initialNodes, initialEdges);
 
   // Dialog state
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
@@ -62,6 +81,22 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
 
   // Connection state
   const [connectingNodeId, setConnectingNodeId] = useState<string | null>(null);
+
+  // Current workflow ID
+  const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(workflowId || null);
+
+  // Workflow metadata
+  const [workflowName, setWorkflowName] = useState<string>(
+    initialWorkflowData?.name || "New Workflow"
+  );
+  const [workflowDescription, setWorkflowDescription] = useState<string | undefined>(
+    initialWorkflowData?.description
+  );
+
+  // Update current workflow ID if workflowId prop changes
+  useEffect(() => {
+    setCurrentWorkflowId(workflowId || null);
+  }, [workflowId]);
 
   // Initialize node operations
   const nodeOps = useNodeOperations(nodes, setNodes);
@@ -88,8 +123,45 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
       // Process the workflow data
       const workflowData = processWorkflow(nodes, edges);
 
-      // Save to API
-      await saveWorkflowToAPI(workflowData);
+      // Add workflow metadata
+      workflowData.name = workflowName;
+      workflowData.description = workflowDescription;
+
+      // If we're editing an existing workflow, include the ID
+      if (currentWorkflowId) {
+        workflowData.id = currentWorkflowId;
+      }
+
+      // Save to API with callback to update webhook URLs
+      await saveWorkflowToAPI(workflowData, (savedWorkflow) => {
+        // Update current workflow ID if this was a new workflow
+        if (!currentWorkflowId) {
+          setCurrentWorkflowId(savedWorkflow.id);
+        }
+
+        // Update webhook trigger nodes with actual webhook URLs
+        if (savedWorkflow?.definition?.trigger?.triggerType === "webhook") {
+          const triggerId = savedWorkflow.definition.trigger.name;
+          const actualWebhookUrl = `http://localhost:3005/webhooks/${savedWorkflow.id}`;
+          
+          // Update the trigger node with the actual webhook URL
+          setNodes((prevNodes) =>
+            prevNodes.map((node) => {
+              if (node.id === triggerId) {
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    actualWebhookUrl,
+                    workflowId: savedWorkflow.id
+                  }
+                } as FlowNode;
+              }
+              return node;
+            })
+          );
+        }
+      });
     } catch (error) {
       console.error("Error saving workflow:", error);
     } finally {
@@ -122,6 +194,12 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     );
 
     setConfigDialogOpen(false);
+  };
+
+  // Update workflow metadata
+  const updateWorkflowMetadata = (name: string, description?: string) => {
+    setWorkflowName(name);
+    setWorkflowDescription(description);
   };
 
   // Create context value
@@ -169,6 +247,12 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     // Workflow operations
     isSaving,
     saveWorkflow,
+    currentWorkflowId,
+
+    // Workflow metadata
+    workflowName,
+    workflowDescription,
+    updateWorkflowMetadata,
   };
 
   return (
