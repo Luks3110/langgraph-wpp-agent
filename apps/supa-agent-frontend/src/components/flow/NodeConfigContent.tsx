@@ -17,6 +17,7 @@ import { z } from "zod";
 import InstagramConfig from "./configs/InstagramConfig";
 import LogConfig from "./configs/LogConfig";
 import MercadoLivreQAConfig from "./configs/MercadoLivreQAConfig";
+import TransformConfig from "./configs/TransformConfig";
 import WebhookConfig from "./configs/WebhookConfig";
 import WebhookTriggerConfig from "./configs/WebhookTriggerConfig";
 import WhatsAppConfig from "./configs/WhatsAppConfig";
@@ -132,6 +133,8 @@ export default function NodeConfigContent({
       return <WebhookTriggerConfig node={node} onUpdateNode={onUpdateNode} />;
     case "log":
       return <LogConfig node={node} onUpdateNode={onUpdateNode} />;
+    case "transform":
+      return <TransformConfig node={node} onUpdateNode={onUpdateNode} />;
     default:
       return <DefaultNodeConfig node={node} onUpdateNode={onUpdateNode} />;
   }
